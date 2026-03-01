@@ -237,25 +237,6 @@ war_enhancement_declare_independence = {
 
 war_enhancement_execute_liege_family = { #Massacre their house!
 	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
-		every_close_or_extended_family_member = {
-			limit = {
-				house = scope:riseandfall_war_enhancement_prev_liege.house
-				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
-			}
-			if = {
-				limit = { 
-					primary_spouse = {
-						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
-						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
-					}
-				}
-				primary_spouse = {
-					death = { death_reason = death_siege killer = root }
-				}
-			}
-			death = { death_reason = death_siege killer = root }
-		}	
-		hidden_effect = {
 		every_courtier = {
 			limit = {
 				house = scope:riseandfall_war_enhancement_prev_liege.house
@@ -273,7 +254,6 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 				}
 			}
 			death = { death_reason = death_siege killer = root }
-		}
 		}
 	}
 	if = {
@@ -348,25 +328,6 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 
 war_enhancement_imprison_liege_family = { #Imprison their house!
 	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
-		every_close_or_extended_family_member = {
-			limit = {
-				house = scope:riseandfall_war_enhancement_prev_liege.house
-				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
-			}
-			if = {
-				limit = { 
-					primary_spouse = {
-						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
-						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
-					}
-				}
-				primary_spouse = {
-					root = { imprison = { target = prev } }
-				}
-			}
-			root = { imprison = { target = prev } }
-		}	
-		hidden_effect = {
 		every_courtier = {
 			limit = {
 				house = scope:riseandfall_war_enhancement_prev_liege.house
@@ -384,7 +345,6 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 				}
 			}
 			root = { imprison = { target = prev } }
-		}
 		}
 	}
 	if = {

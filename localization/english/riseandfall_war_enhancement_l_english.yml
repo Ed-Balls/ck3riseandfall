@@ -14,7 +14,7 @@
  riseandfall_war_enhancement_ruler_fate:0 "You will decide the fate of [riseandfall_war_enhancement_prev_liege.GetName]"
  
  riseandfall_war_enhancement.2.t:0 "The fate of [riseandfall_war_enhancement_prev_liege.GetName]"
- riseandfall_war_enhancement.2.d:0 "I, as the leader of the rebellion, now get to decide what happens to [riseandfall_war_enhancement_prev_liege.GetFirstNameBase]."
+ riseandfall_war_enhancement.2.d:0 "I, as the leader of the rebellion, now get to decide what happens to [riseandfall_war_enhancement_prev_liege.GetName]."
  riseandfall_war_enhancement.2.a:0 "Bring me [riseandfall_war_enhancement_prev_liege.GetHerHis] head!"
  riseandfall_war_enhancement.2.b:0 "[riseandfall_war_enhancement_prev_liege.GetHerHis] has forfeited [riseandfall_war_enhancement_prev_liege.GetHerHis] titles"
  riseandfall_war_enhancement.2.c:0 "[riseandfall_war_enhancement_prev_liege.GetName] is nothing to fear now."

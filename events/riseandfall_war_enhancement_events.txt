@@ -532,6 +532,11 @@ riseandfall_war_enhancement.2 = {
 	option = { 
 		name = riseandfall_war_enhancement.2.a
 		war_enhancement_execute_liege = yes
+		trigger = {
+			scope:riseandfall_war_enhancement_prev_liege = {
+				is_alive = yes
+			}
+		}
 		ai_chance = {
 			base = 10
 			ai_value_modifier = {
@@ -577,6 +582,11 @@ riseandfall_war_enhancement.2 = {
 	option = { #imprison him
 		name = riseandfall_war_enhancement.2.f
 		war_enhancement_imprison_liege = yes
+		trigger = {
+			scope:riseandfall_war_enhancement_prev_liege = {
+				is_alive = yes
+			}
+		}
 		ai_chance = {
 			base = 20
 			ai_value_modifier = {
@@ -599,7 +609,7 @@ riseandfall_war_enhancement.2 = {
 		}
 	}
 	
-	# Option: Do nothing (no punishment for previous liege).
+	# Option: Do nothing (no punishment).
 	option = { #do nothing
 		name = riseandfall_war_enhancement.2.c
 		ai_chance = {
@@ -655,6 +665,29 @@ riseandfall_war_enhancement.21 = {
 			scope:riseandfall_war_enhancement_attacker = {
 				trigger_event = {
 					id = riseandfall_war_enhancement.1
+				}			
+			}
+	}
+}
+
+# Event: The previous liege died, now deal with the realm.
+riseandfall_war_enhancement.22 = {
+	type = character_event
+	
+	title = riseandfall_war_enhancement.22.t
+	desc = riseandfall_war_enhancement.22.d
+
+	theme = intrigue
+	left_portrait = {
+		character = scope:riseandfall_war_enhancement_prev_liege
+		animation = admiration
+	}
+	
+	option = { # liege died
+		name = riseandfall_war_enhancement.22.a
+			scope:riseandfall_war_enhancement_attacker = {
+				trigger_event = {
+					id = riseandfall_war_enhancement.2
 				}			
 			}
 	}
@@ -1018,6 +1051,9 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 				death = { death_reason = death_battle } 
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = { id = riseandfall_war_enhancement.2 }
+				}
 			}
 		}
 		else_if = {
@@ -1037,6 +1073,9 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 				death = { death_reason = death_battle } 
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = { id = riseandfall_war_enhancement.2 }
+				}
 			}
 		}
 		else_if = {
@@ -1055,7 +1094,10 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 						60 = { }
 					}
 				}
-				death = { death_reason = death_battle } 
+				death = { death_reason = death_battle }
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = { id = riseandfall_war_enhancement.2 }
+				}				
 			}
 		}
 		else_if = {
@@ -1119,7 +1161,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 			committed_suicide_effect = yes
 		}
 		scope:riseandfall_war_enhancement_attacker = {
-			trigger_event = { id = riseandfall_war_enhancement.21 } #escaped
+			trigger_event = { id = riseandfall_war_enhancement.22 } #Died in battle or suicided
 		}
 
 		ai_chance = {
