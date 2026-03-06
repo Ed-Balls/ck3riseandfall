@@ -37,7 +37,7 @@
  riseandfall_war_enhancement.4.b:0 "It is not wise..."
  
  riseandfall_war_enhancement.5.t:0 "Chaos in the capital!"
- riseandfall_war_enhancement.5.d:0 "With the rebels closing in, my person is at risk of capture."
+ riseandfall_war_enhancement.5.d:0 "With the rebels closing in, I am at risk of capture."
  riseandfall_war_enhancement.5.a:0 "These ruffians shall not capture me!"
  riseandfall_war_enhancement.5.b:0 "There is no point in trying to escape."
  riseandfall_war_enhancement.5.c:0 "I won't give up a single title, resist to the end!"
@@ -53,7 +53,7 @@
  riseandfall_war_enhancement.7.a:0 "That's the end of that, then."
  
  riseandfall_war_enhancement.8.t:0 "Liege overthrown!"
- riseandfall_war_enhancement.8.d:0 "Succession overthrown! [riseandfall_war_enhancement_prev_liege.GetFirstName] has just been overthrown by a rebellion! The leader of the rebellion, [riseandfall_war_enhancement_attacker.GetName], is forming a council of vassals to vote for our next liege to take the throne, to be held soon."
+ riseandfall_war_enhancement.8.d:0 "[riseandfall_war_enhancement_prev_liege.GetFirstName] has just been overthrown by a rebellion! The leader of the rebellion, [riseandfall_war_enhancement_attacker.GetName], is forming a council of vassals to vote for our next liege to take the throne, to be held soon."
  riseandfall_war_enhancement.8.a:0 "I better vote."
  
  riseandfall_war_enhancement.9.t:0 "Liege overthrown!"
@@ -87,3 +87,15 @@
  riseandfall_war_enhancement.16.t:0 "New Rulers"
  riseandfall_war_enhancement.16.d:0 "Fortune has led [ROOT.Char.GetLiege.GetName] to victory against [riseandfall_war_enhancement_prev_liege.GetName], and now controls the realm."
  riseandfall_war_enhancement.16.a:0 "These things happen."
+ 
+ riseandfall_war_enhancement.17.t:0 "Liege slain!"
+ riseandfall_war_enhancement.17.d:0 "Instead of surrender to [riseandfall_war_enhancement_attacker.GetName]'s rebellion, [riseandfall_war_enhancement_prev_liege.GetName] riseandfall_war_enhancement_prev_liege.GetSheHe] [riseandfall_war_enhancement_prev_liege.GetDeathReason]."
+ riseandfall_war_enhancement.17.a:0 "Is this be an end to the chaos?"
+  
+ riseandfall_war_enhancement.18.t:0 "Massacre in the capital!"
+ riseandfall_war_enhancement.18.d:0 "Following [riseandfall_war_enhancement_prev_liege.GetName]'s defeat against the rebellion, [riseandfall_war_enhancement_attacker.GetName] took the opportunity to order the killing of many members of the royal family."
+ riseandfall_war_enhancement.18.a:0 "How shocking!"
+ 
+ riseandfall_war_enhancement.22.t:0 "[riseandfall_war_enhancement_prev_liege.GetFirstName] Dead!"
+ riseandfall_war_enhancement.22.d:0 "[riseandfall_war_enhancement_prev_liege.GetNameNoTooltip] fell in [riseandfall_liege_death_location.GetNameNoTooltip], initial reports state that [riseandfall_war_enhancement_prev_liege.GetSheHe] [riseandfall_war_enhancement_prev_liege.GetDeathReason]."
+ riseandfall_war_enhancement.22.a:0 "Finally."

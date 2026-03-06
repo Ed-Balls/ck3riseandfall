@@ -189,7 +189,7 @@ riseandfall_war_enhancement.1 = {
 					has_realm_law_flag = advanced_succession_law
 				}
 			}
-			scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
+			scope:riseandfall_war_enhancement_liege_primary_title = {
 				NOT = { has_title_law_flag = elective_succession_law }
 			}
 			root = {
@@ -450,6 +450,7 @@ riseandfall_war_enhancement.2 = {
 			}
 		}
 		war_enhancement_execute_liege_family = yes
+		war_enhancement_liege_family_slain = yes
 		ai_chance = {
 			base = -50
 			ai_value_modifier = {
@@ -1031,7 +1032,12 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 			}
 		}
 		scope:riseandfall_war_enhancement_attacker = {
-			trigger_event = { id = riseandfall_war_enhancement.21 }
+			trigger_event = { id = riseandfall_war_enhancement.22 }
+		}
+		root = {
+			location = {
+				save_scope_as = riseandfall_liege_death_location
+			}
 		}
 		hidden_effect = {
 		if = {
@@ -1050,7 +1056,9 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 						10 = { }
 					}
 				}
+				
 				death = { death_reason = death_battle } 
+				war_enhancement_liege_slain = yes
 				scope:riseandfall_war_enhancement_attacker = {
 					trigger_event = { id = riseandfall_war_enhancement.2 }
 				}
@@ -1073,6 +1081,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 				death = { death_reason = death_battle } 
+				war_enhancement_liege_slain = yes
 				scope:riseandfall_war_enhancement_attacker = {
 					trigger_event = { id = riseandfall_war_enhancement.2 }
 				}
@@ -1095,6 +1104,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 				death = { death_reason = death_battle }
+				war_enhancement_liege_slain = yes
 				scope:riseandfall_war_enhancement_attacker = {
 					trigger_event = { id = riseandfall_war_enhancement.2 }
 				}				
@@ -1117,6 +1127,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 			death = { death_reason = death_battle } 
+			war_enhancement_liege_slain = yes
 			}
 		}
 		else = { #Your knights refused to fight and you were handed over and captured
@@ -1154,8 +1165,13 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 	
 		
 		root = {
+			location = {
+				save_scope_as = riseandfall_liege_death_location
+			}
 			death = { death_reason = death_suicide }
 		}
+		
+		war_enhancement_liege_slain = yes
 		
 		show_as_tooltip = {
 			committed_suicide_effect = yes
@@ -1165,7 +1181,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 		}
 
 		ai_chance = {
-			base = 0
+			base = -30
 			ai_value_modifier = {
 				ai_boldness = -0.2
 				ai_zeal = -0.2
@@ -1244,7 +1260,7 @@ riseandfall_war_enhancement.6 = {
 		war_enhancement_extend_rule = yes
 		war_enhancement_delay_council = yes
 		ai_chance = {
-			base = 100 
+			base = -50 
 			ai_value_modifier = {
 			ai_honor = -1
 			ai_energy = -1
@@ -1411,6 +1427,30 @@ riseandfall_war_enhancement.16 = {
 	
 	option = { # These things happen.
 		name = riseandfall_war_enhancement.16.a
+	}
+}
+
+# Event: Liege slain.
+riseandfall_war_enhancement.17 = {
+	title = riseandfall_war_enhancement.17.t
+	desc = riseandfall_war_enhancement.17.d
+	type = character_event
+	theme = realm
+	
+	option = { # 
+		name = riseandfall_war_enhancement.17.a
+	}
+}
+
+# Event: Liege's family executed.
+riseandfall_war_enhancement.18 = {
+	title = riseandfall_war_enhancement.18.t
+	desc = riseandfall_war_enhancement.18.d
+	type = character_event
+	theme = realm
+	
+	option = { # There's no going back from that.
+		name = riseandfall_war_enhancement.18.a
 	}
 }
 
