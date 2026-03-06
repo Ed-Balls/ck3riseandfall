@@ -453,10 +453,11 @@ war_enhancement_abdicate_to_heir = {
 			change = scope:change
 		}
 	}
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_liege_elective_title.holder = {
 		every_held_title = { 
 			limit = {
-				AND = {
+				OR = {
+					AND = {
 						OR = {
 							holder = scope:riseandfall_war_enhancement_attacker.liege
 							AND = {
@@ -464,12 +465,14 @@ war_enhancement_abdicate_to_heir = {
 								previous_holder = scope:riseandfall_war_enhancement_prev_liege
 							}
 						}
-					title_held_years < 1
-					OR = {
-						has_claim = scope:riseandfall_liege_elective_title.current_heir
-						de_jure_liege = scope:riseandfall_liege_elective_title
-						de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
+						title_held_years < 1
+						OR = {
+							has_claim = scope:riseandfall_liege_elective_title.current_heir
+							de_jure_liege = scope:riseandfall_liege_elective_title
+							de_facto_liege = scope:riseandfall_liege_elective_title.holder
+						}
 					}
+					this = title_capital_county
 				}
 			}
 			change_title_holder_include_vassals = {
