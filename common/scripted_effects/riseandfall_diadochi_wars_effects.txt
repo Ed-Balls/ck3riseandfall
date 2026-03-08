@@ -1,91 +1,219 @@
-﻿# Rise and Fall: scripted effect to force Diadochi wars among same-origin realms
-# Moved from on_action to keep on_action concise.
+﻿# Rise and Fall - Diadochi wars
+# Called from a character-scoped random yearly pulse so successor wars can fire
+# throughout the year instead of clustering on January 1.
+
 riseandfall_diadochi_wars_se = {
-    # Only force AI attackers (do not force human players)
-    every_independent_ruler = {
-        limit = {
-            is_ai = yes
-            # Require an existing stability score and minimum stability
-            has_variable = riseandfall_realm_stability_score
-            # Only act when stability is healthy
-            var:riseandfall_realm_stability_score >= 40
-            NOT = { is_at_war = yes }
-            NOT = { is_in_debt = yes }
-        }
-        save_scope_as = rf_ruler
-        scope:rf_ruler = {
-            # Build a list of potential targets sharing the same split origin
-            every_independent_ruler = {
-                limit = {
-                    is_landed = yes
-                    is_independent_ruler = yes
-                    NOT = { this = scope:rf_ruler }
-                    # Only allow candidates who neighbour the attacker realm
-                    primary_title = { is_neighbor_to_realm = scope:rf_ruler }
-                    # Relationship checks (successor vs successor, origin vs successor, successor vs origin)
-                    OR = {
-                        primary_title.var:rf_successor_origin_title = scope:rf_ruler.primary_title.var:rf_successor_origin_title
-                        primary_title.var:rf_successor_origin_title = scope:rf_ruler.primary_title
-                        primary_title = scope:rf_ruler.primary_title.var:rf_successor_origin_title
-                    }
-                    NOT = { is_at_war_with = scope:rf_ruler }
-                    NOT = { has_truce = scope:rf_ruler }
-                    NOT = { is_in_debt = yes }
-                    # Do not target realms the attacker has high opinion of
-                    scope:rf_ruler = { opinion = { target = this value <= 50 } }
-                    # Ensure attacker can actually declare this CB on the candidate
-                    scope:rf_ruler = { can_declare_war = { defender = this casus_belli = riseandfall_diadochi_cb target_titles = { this.primary_title } } }
-                    has_variable = riseandfall_realm_stability_score
-                    var:riseandfall_realm_stability_score >= 40
-                }
-                add_to_list = rf_diadochi_targets
-            }
+	# Inputs: root is one independent ruler from a random yearly character pulse.
+	# Outputs: at most one Diadochi war started against a same-origin realm.
+	# Data shape: uses saved scopes for the origin title, target ruler, and target title.
+	# Error modes: no valid same-origin target, war cooldown active, or war blocked by truce/alliance/cb rules.
+	save_scope_as = rf_diadochi_attacker
 
-            # Randomly pick one target (if any) to avoid mass simultaneous wars
-            random_in_list = {
-                list = rf_diadochi_targets*
-                save_scope_as = rf_target
-            }
+	clear_saved_scope = rf_diadochi_origin_title
+	clear_saved_scope = rf_diadochi_target_ruler
+	clear_saved_scope = rf_diadochi_target_title
+	set_variable = { name = rf_diadochi_is_successor value = 0 }
 
-            # If we selected a valid target, check can_declare_war then force the declaration
-            if = {
-                limit = { exists = scope:rf_target }
-                # Respect engine rules such as truces/alliances/factions via can_declare_war
-                # Ensure attacker is sufficiently stronger: 1.5x normally, 1.0x if target is already at war
-                scope:rf_ruler = {
-                    set_variable = { name = rf_required_power value = scope:rf_target.military_power }
-                    if = {
-                        limit = { scope:rf_target = { is_at_war = yes } }
-                        # target already engaged: require at least equal power
-                        change_variable = { name = rf_required_power multiply = 1.0 }
-                    }
-                    else = {
-                        # normal requirement: attacker must be >= 1.5x target
-                        change_variable = { name = rf_required_power multiply = 1.5 }
-                    }
-                    if = {
-                        limit = { var:rf_required_power <= scope:rf_ruler.military_power }
-                        # Do not attempt to declare if there's a truce between attacker and target
-                        if = {
-                            limit = { NOT = { scope:rf_ruler = { has_truce = scope:rf_target } } }
-                            if = { limit = { scope:rf_ruler = { can_declare_war = { defender = scope:rf_target casus_belli = riseandfall_diadochi_cb target_titles = { scope:rf_target.primary_title } } } } }
-                            scope:rf_ruler = {
-                                random = {
-                                    chance = 20
-                                    start_war = {
-                                        casus_belli = riseandfall_diadochi_cb
-                                        target = scope:rf_target
-                                        target_title = scope:rf_target.primary_title
-                                        claimant = scope:rf_ruler
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    remove_variable = rf_required_power
-                }
-                clear_saved_scope = rf_target
-            }
-        }
-    }
+	if = {
+		limit = {
+			is_ai = yes
+			is_landed = yes
+			is_independent_ruler = yes
+			is_imprisoned = no
+			is_at_war = no
+			NOR = {
+				government_has_flag = government_is_landless_adventurer
+			}
+			OR = {
+				riseandfall_has_successor_primary_title_trigger = yes
+				any_independent_ruler = {
+					limit = {
+						NOT = { this = root }
+						riseandfall_has_successor_primary_title_trigger = yes
+						primary_title.var:rf_successor_origin_title = root.primary_title
+					}
+				}
+			}
+		}
+
+		# A successor attacks using its stored origin title, while the original realm
+		# uses its own primary title to target its breakaway successors.
+		if = {
+			limit = { riseandfall_has_successor_primary_title_trigger = yes }
+			set_variable = { name = rf_diadochi_is_successor value = 1 }
+			primary_title.var:rf_successor_origin_title = { save_scope_as = rf_diadochi_origin_title }
+		}
+		else = {
+			primary_title = { save_scope_as = rf_diadochi_origin_title }
+		}
+
+		if = {
+			limit = {
+				exists = scope:rf_diadochi_origin_title
+				NOT = { scope:rf_diadochi_origin_title = { has_variable = rf_diadochi_war_cooldown } }
+			}
+
+			# Successors should still pressure their origin realm sometimes, but peers remain
+			# the default target so they do not ignore each other.
+			# Prioritize neighboring successor states first for more realistic conquest patterns.
+			if = {
+				limit = { var:rf_diadochi_is_successor = 1 }
+				random_list = {
+					35 = {
+						riseandfall_diadochi_try_neighbor_peer_target_se = yes
+						if = {
+							limit = { NOT = { exists = scope:rf_diadochi_target_ruler } }
+							riseandfall_diadochi_try_peer_target_se = yes
+						}
+						if = {
+							limit = { NOT = { exists = scope:rf_diadochi_target_ruler } }
+							riseandfall_diadochi_try_origin_target_se = yes
+						}
+					}
+					65 = {
+						riseandfall_diadochi_try_origin_target_se = yes
+						if = {
+							limit = { NOT = { exists = scope:rf_diadochi_target_ruler } }
+							riseandfall_diadochi_try_neighbor_peer_target_se = yes
+						}
+						if = {
+							limit = { NOT = { exists = scope:rf_diadochi_target_ruler } }
+							riseandfall_diadochi_try_peer_target_se = yes
+						}
+					}
+				}
+			}
+			else = {
+				riseandfall_diadochi_try_neighbor_peer_target_se = yes
+				if = {
+					limit = { NOT = { exists = scope:rf_diadochi_target_ruler } }
+					riseandfall_diadochi_try_peer_target_se = yes
+				}
+			}
+
+			if = {
+				limit = {
+					exists = scope:rf_diadochi_target_ruler
+					exists = scope:rf_diadochi_target_title
+					NOT = { has_truce = scope:rf_diadochi_target_ruler }
+					NOT = { is_allied_to = scope:rf_diadochi_target_ruler }
+					NOT = { is_at_war_with = scope:rf_diadochi_target_ruler }
+					can_declare_war = {
+						defender = scope:rf_diadochi_target_ruler
+						casus_belli = riseandfall_diadochi_cb
+						target_titles = { scope:rf_diadochi_target_title }
+					}
+				}
+				start_war = {
+					casus_belli = riseandfall_diadochi_cb
+					target = scope:rf_diadochi_target_ruler
+					target_title = scope:rf_diadochi_target_title
+				}
+				# Shared cooldown on the origin title prevents several same-origin realms
+				# from chaining multiple declarations from the same pulse window.
+				scope:rf_diadochi_origin_title = {
+					set_variable = { name = rf_diadochi_war_cooldown value = 1 years = 2 }
+				}
+			}
+		}
+	}
+
+	remove_variable = rf_diadochi_is_successor
+	clear_saved_scope = rf_diadochi_target_title
+	clear_saved_scope = rf_diadochi_target_ruler
+	clear_saved_scope = rf_diadochi_origin_title
+	clear_saved_scope = rf_diadochi_attacker
+}
+
+riseandfall_diadochi_try_peer_target_se = {
+	clear_saved_scope = rf_diadochi_target_ruler
+	clear_saved_scope = rf_diadochi_target_title
+
+	random_independent_ruler = {
+		limit = {
+			NOT = { this = root }
+			is_landed = yes
+			is_independent_ruler = yes
+			exists = primary_title
+			is_imprisoned = no
+			is_at_war = no
+			riseandfall_has_successor_primary_title_trigger = yes
+			primary_title.var:rf_successor_origin_title = scope:rf_diadochi_origin_title
+			root.military_power > military_power
+		}
+		save_scope_as = rf_diadochi_target_ruler
+		primary_title = { save_scope_as = rf_diadochi_target_title }
+	}
+}
+
+riseandfall_diadochi_try_neighbor_peer_target_se = {
+	clear_saved_scope = rf_diadochi_target_ruler
+	clear_saved_scope = rf_diadochi_target_title
+
+	# First, try to find a neighboring successor state from the same origin
+	any_neighboring_realm_owner = {
+		limit = {
+			NOT = { this = root }
+			is_landed = yes
+			is_independent_ruler = yes
+			exists = primary_title
+			is_imprisoned = no
+			is_at_war = no
+			riseandfall_has_successor_primary_title_trigger = yes
+			primary_title.var:rf_successor_origin_title = scope:rf_diadochi_origin_title
+			root.military_power > military_power
+		}
+	}
+
+	if = {
+		limit = {
+			any_neighboring_realm_owner = {
+				NOT = { this = root }
+				is_landed = yes
+				is_independent_ruler = yes
+				exists = primary_title
+				is_imprisoned = no
+				is_at_war = no
+				riseandfall_has_successor_primary_title_trigger = yes
+				primary_title.var:rf_successor_origin_title = scope:rf_diadochi_origin_title
+				root.military_power > military_power
+			}
+		}
+		random_neighboring_realm_owner = {
+			limit = {
+				NOT = { this = root }
+				is_landed = yes
+				is_independent_ruler = yes
+				exists = primary_title
+				is_imprisoned = no
+				is_at_war = no
+				riseandfall_has_successor_primary_title_trigger = yes
+				primary_title.var:rf_successor_origin_title = scope:rf_diadochi_origin_title
+				root.military_power > military_power
+			}
+			save_scope_as = rf_diadochi_target_ruler
+			primary_title = { save_scope_as = rf_diadochi_target_title }
+		}
+	}
+}
+
+riseandfall_diadochi_try_origin_target_se = {
+	if = {
+		limit = {
+			riseandfall_has_successor_primary_title_trigger = yes
+			exists = scope:rf_diadochi_origin_title
+			scope:rf_diadochi_origin_title = { exists = holder }
+			scope:rf_diadochi_origin_title.holder = {
+				NOT = { this = root }
+				is_landed = yes
+				is_independent_ruler = yes
+				exists = primary_title
+				is_imprisoned = no
+				is_at_war = no
+			}
+			military_power > scope:rf_diadochi_origin_title.holder.military_power
+		}
+		scope:rf_diadochi_origin_title.holder = { save_scope_as = rf_diadochi_target_ruler }
+		scope:rf_diadochi_origin_title = { save_scope_as = rf_diadochi_target_title }
+	}
 }
