@@ -23,6 +23,9 @@ riseandfall_no_powerful_vassals_trigger = {
 riseandfall_can_realm_split_trigger = {
     is_independent_ruler = yes
     primary_title.tier >= tier_kingdom
+    # Do not split again if this realm was recently created by a split.
+    # These variables live on the title for 50 years.
+    NOT = { primary_title = { has_variable = rf_successor_origin_title } }
     # Must have at least 2 vassals (powerful vassals for feudal, regular vassals for administrative)
     OR = {
         # Normal governments with powerful vassals
@@ -59,6 +62,71 @@ riseandfall_has_successor_primary_title_trigger = {
 
 riseandfall_can_use_diadochi_cb_trigger = {
     riseandfall_has_successor_primary_title_trigger = yes
+}
+
+riseandfall_can_browse_diadochi_targets_trigger = {
+    is_landed = yes
+    is_independent_ruler = yes
+    exists = primary_title
+    NOR = {
+        government_has_flag = government_is_landless_adventurer
+    }
+    OR = {
+        any_neighboring_realm_owner = {
+            NOT = { this = root }
+            is_landed = yes
+            is_independent_ruler = yes
+            exists = primary_title
+            NOT = { has_truce = root }
+            NOT = { is_allied_to = root }
+            NOT = { is_at_war_with = root }
+            root = {
+                can_declare_war = {
+                    defender = prev
+                    casus_belli = riseandfall_diadochi_cb
+                    target_titles = { prev.primary_title }
+                }
+            }
+        }
+        any_independent_ruler = {
+            NOT = { this = root }
+            is_landed = yes
+            is_independent_ruler = yes
+            exists = primary_title
+            NOT = { has_truce = root }
+            NOT = { is_allied_to = root }
+            NOT = { is_at_war_with = root }
+            root = {
+                can_declare_war = {
+                    defender = prev
+                    casus_belli = riseandfall_diadochi_cb
+                    target_titles = { prev.primary_title }
+                }
+            }
+        }
+        AND = {
+            riseandfall_has_successor_primary_title_trigger = yes
+            primary_title.var:rf_successor_origin_title = {
+                exists = holder
+                holder = {
+                    NOT = { this = root }
+                    is_landed = yes
+                    is_independent_ruler = yes
+                    exists = primary_title
+                    NOT = { has_truce = root }
+                    NOT = { is_allied_to = root }
+                    NOT = { is_at_war_with = root }
+                    root = {
+                        can_declare_war = {
+                            defender = prev
+                            casus_belli = riseandfall_diadochi_cb
+                            target_titles = { root.primary_title.var:rf_successor_origin_title }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 riseandfall_is_diadochi_target_trigger = {

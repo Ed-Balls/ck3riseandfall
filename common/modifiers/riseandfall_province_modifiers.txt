@@ -2,6 +2,10 @@
 
 riseandfall_authority_collapse = {
     development_decline = -1
+<<<<<<< HEAD
     county_opinion_add = -5
+=======
+    county_opinion_add = -1000
+>>>>>>> upstream/main
     icon = byzantine_crown_negative
 }
