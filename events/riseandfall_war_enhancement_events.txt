@@ -18,7 +18,7 @@ riseandfall_war_enhancement.1 = {
 	option = { # press my claims
 		name = riseandfall_war_enhancement.1.a
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 				any_held_title = {
 					root = {
 						has_claim_on = prev
@@ -182,7 +182,8 @@ riseandfall_war_enhancement.1 = {
 	option = { # lets elect a suitable ruler
 		name = riseandfall_war_enhancement.1.b
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				is_liege_or_above_of = root
 				has_government = feudal_government
 				OR = {
 					has_realm_law_flag = partition_succession_law
@@ -330,6 +331,9 @@ riseandfall_war_enhancement.1 = {
 	option = { #independence
 		name = riseandfall_war_enhancement.1.d
 		trigger = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				is_independent_ruler = yes
+			}
 			OR = {
 				AND = {
 					scope:riseandfall_war_enhancement_liege = {
@@ -371,6 +375,59 @@ riseandfall_war_enhancement.1 = {
 				add = -50
 				root = {
 					has_trait = content
+				}
+			}
+		}
+	}
+	
+	# Option: Seize power from the emperor.
+	option = { # Now's my chance, usurp the administrative ruler.
+		name = riseandfall_war_enhancement.1.i
+		trigger = {
+			scope:riseandfall_war_enhancement_attacker.liege = {
+				AND = {
+					has_government = administrative_government
+					is_independent_ruler = yes
+				}
+			}
+			root = {
+				is_independent_ruler = no
+			}
+		}
+		war_enhancement_administrative_liege_usurper = yes
+		war_enhancement_overthrow_emperor_administrative = yes
+		ai_chance = {
+			base = -50
+			ai_value_modifier = {
+				ai_greed = 2
+				ai_honor = -1.5
+				ai_energy = 2.5
+				ai_compassion = -2
+				ai_boldness = 2.5
+				ai_sociability = 0.5
+				ai_vengefulness = 0.3
+			}
+			modifier = {
+				add = 20
+				root = {
+					has_trait = ambitious
+				}
+			}
+			opinion_modifier = { # Opinion Factor
+				who = root
+				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				multiplier = -5
+			}
+			modifier = {
+				add = 30
+				root = {
+					has_trait = ambitious
+				}
+			}
+			modifier = {
+				add = 75
+				scope:riseandfall_war_enhancement_attacker.liege = {
+					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
 				}
 			}
 		}
@@ -435,18 +492,35 @@ riseandfall_war_enhancement.2 = {
 	option = { 	
 		name = riseandfall_war_enhancement.2.e
 		trigger = { 
-			OR = { 
-				has_trait = sadistic
-				has_trait = lunatic
-				has_trait = possessed
-				ai_vengefulness >= 95
-				ai_compassion <= -90
-				ai_honor <= -90
-				has_government = tribal_government
-				has_government = nomad_government
-				has_government = celestial_government
-				has_government = meritocratic_government
-				has_government = steppe_admin_government
+			AND = {
+				OR = { 
+					has_trait = sadistic
+					has_trait = lunatic
+					has_trait = possessed
+					ai_vengefulness >= 95
+					ai_compassion <= -90
+					ai_honor <= -90
+					has_government = tribal_government
+					has_government = nomad_government
+					has_government = celestial_government
+					has_government = meritocratic_government
+					has_government = steppe_admin_government
+					has_government = administrative_government
+				}
+				scope:riseandfall_war_enhancement_prev_liege = {
+					any_close_or_extended_family_member = {
+						OR = {
+						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+						is_at_location = scope:riseandfall_liege_death_location
+						is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						}
+					}
+				}
 			}
 		}
 		war_enhancement_execute_liege_family = yes
@@ -505,20 +579,40 @@ riseandfall_war_enhancement.2 = {
 	option = { 	
 		name = riseandfall_war_enhancement.2.g
 		trigger = { 
-			OR = { 
-				ai_vengefulness >= 50
-				ai_honor <= -50
-				ai_rationality >= 30
-				has_government = tribal_government
-				has_government = nomad_government
-				has_government = celestial_government
-				has_government = meritocratic_government
-				has_government = steppe_admin_government
+			AND = {
+				OR = { 
+					has_trait = sadistic
+					has_trait = lunatic
+					has_trait = possessed
+					ai_vengefulness >= 50
+					ai_compassion <= -50
+					ai_honor <= -30
+					has_government = tribal_government
+					has_government = nomad_government
+					has_government = celestial_government
+					has_government = meritocratic_government
+					has_government = steppe_admin_government
+					has_government = administrative_government
+				}
+				scope:riseandfall_war_enhancement_prev_liege = {
+					any_close_or_extended_family_member = {
+						OR = {
+							is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+							is_at_location = scope:riseandfall_liege_death_location
+							is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_attacker
+							is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
+							is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
+							is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+							is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+							is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						}
+					}
+				}
 			}
 		}
 		war_enhancement_imprison_liege_family = yes
 		ai_chance = {
-			base = 60
+			base = 80
 			ai_value_modifier = {
 				ai_vengefulness = -0.1
 				ai_energy = 0.3
@@ -536,6 +630,20 @@ riseandfall_war_enhancement.2 = {
 		trigger = {
 			scope:riseandfall_war_enhancement_prev_liege = {
 				is_alive = yes
+				OR = {
+						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+						is_at_location = scope:riseandfall_liege_death_location
+						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+				}
+				OR = {
+					is_imprisoned = NO
+					is_imprisoned_by = root
+				}
 			}
 		}
 		ai_chance = {
@@ -586,6 +694,17 @@ riseandfall_war_enhancement.2 = {
 		trigger = {
 			scope:riseandfall_war_enhancement_prev_liege = {
 				is_alive = yes
+				OR = {
+						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+						is_at_location = scope:riseandfall_liege_death_location
+						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
+						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+				}
+				NOT = { is_imprisoned = yes }
 			}
 		}
 		ai_chance = {
@@ -613,6 +732,13 @@ riseandfall_war_enhancement.2 = {
 	# Option: Do nothing (no punishment).
 	option = { #do nothing
 		name = riseandfall_war_enhancement.2.c
+		hidden_effect = {
+			root = {
+				trigger_event = {
+					id = riseandfall_war_enhancement.1
+				}
+			}
+		}
 		ai_chance = {
 			base = 10
 			ai_value_modifier = {
@@ -663,11 +789,11 @@ riseandfall_war_enhancement.21 = {
 	
 	option = { # escaped, time to deal with the realm
 		name = riseandfall_war_enhancement.21.a
-			scope:riseandfall_war_enhancement_attacker = {
-				trigger_event = {
-					id = riseandfall_war_enhancement.1
-				}			
-			}
+		scope:riseandfall_war_enhancement_attacker = {
+			trigger_event = {
+				id = riseandfall_war_enhancement.2
+			}			
+		}
 	}
 }
 
@@ -686,11 +812,13 @@ riseandfall_war_enhancement.22 = {
 	
 	option = { # liege died
 		name = riseandfall_war_enhancement.22.a
+		trigger = {
 			scope:riseandfall_war_enhancement_attacker = {
 				trigger_event = {
 					id = riseandfall_war_enhancement.2
 				}			
 			}
+		}
 	}
 }
 
@@ -939,7 +1067,7 @@ riseandfall_war_enhancement.4 = {
 	}
 }
 
-# Event: Fallen ruler's options when everything is falling apart.
+# Event: Fallen ruler's options after a tyranny/liberty war.
 riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or do nothing? (other options as well depending on personality)
 	type = character_event
 	
@@ -952,7 +1080,91 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 		animation = beg
 	}
 	
-	# Option: Attempt to escape via intrigue duel.
+	# Option: Attempt to escape with family via intrigue duel.
+	option = { #attempt to escape (with options such as hide, rally allies, or use martial maybe) #intrigue/craven characters prefer, most common
+		name = riseandfall_war_enhancement.5.b
+		
+		duel = {
+			skill = intrigue
+			target = scope:riseandfall_war_enhancement_attacker
+
+			# Success: root escapes
+			60 = {
+				compare_modifier = {
+					value = scope:duel_value
+					multiplier = 3.5
+					min = -59
+				}
+
+				hidden_effect = {
+					if = {					
+						limit = {
+							root = {
+								NOR = {
+									has_government = landless_adventurer_government
+									is_landed = yes
+								}
+							}
+						}
+						root = { 
+							banish_effect = { BANISHER = scope:riseandfall_war_enhancement_attacker }
+							every_close_or_extended_family_member = {
+								limit = {
+									OR = {
+										is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+										is_at_location = scope:riseandfall_liege_death_location
+										is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
+										is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
+										is_at_same_location = scope:riseandfall_war_enhancement_attacker
+										is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+										is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+										is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+									}
+									NOR = { 
+										has_government = landless_adventurer_government	
+										is_landed = yes
+									}
+								}
+								set_employer = root.liege
+							}
+						}
+						scope:riseandfall_war_enhancement_attacker = { 
+							trigger_event = {
+								id = riseandfall_war_enhancement.21
+							}
+						}
+					}
+				}
+			}
+			# Failure: challenger captures/seizes the ruler
+			40 = {
+				compare_modifier = {
+					value = scope:duel_value
+					multiplier = -3.5
+					min = -49
+				}
+				hidden_effect = {
+					scope:riseandfall_war_enhancement_attacker = {
+						trigger_event = { 
+							id = riseandfall_war_enhancement.2
+						}
+					}
+				}
+			}
+		}
+		
+		ai_chance = {
+			base = 50
+			ai_value_modifier = {
+				ai_boldness = -0.2
+				ai_energy = 0.4
+				ai_rationality = 0.2
+				ai_honor = -0.6
+			}
+		}
+	}
+	
+	# Option: Attempt to escape alone via intrigue duel.
 	option = { #attempt to escape (with options such as hide, rally allies, or use martial maybe) #intrigue/craven characters prefer, most common
 		name = riseandfall_war_enhancement.5.a
 		
@@ -965,11 +1177,21 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 				compare_modifier = {
 					value = scope:duel_value
 					multiplier = 3.5
-					min = -49
+					min = -59
 				}
 
 				hidden_effect = {
-					#riseandfall_palace_coup_root_flees_success = yes
+					if = {					
+						limit = {
+							root = {
+								NOR = {
+									has_government = landless_adventurer_government
+									is_landed = yes
+								}
+							}
+						}
+						banish_effect = { BANISHER = scope:riseandfall_war_enhancement_attacker }
+					}
 					scope:riseandfall_war_enhancement_attacker = { 
 						trigger_event = {
 							id = riseandfall_war_enhancement.21
@@ -1451,6 +1673,228 @@ riseandfall_war_enhancement.18 = {
 	
 	option = { # There's no going back from that.
 		name = riseandfall_war_enhancement.18.a
+	}
+}
+
+# Event: Emperor Usurped.
+riseandfall_war_enhancement.19 = {
+	title = riseandfall_war_enhancement.19.t
+	desc = riseandfall_war_enhancement.19.d
+	type = character_event
+	theme = realm
+	
+	option = { #Are we going back to usurpers?
+		name = riseandfall_war_enhancement.19.a
+	}
+}
+
+riseandfall_war_enhancement.20 = { # New Emperor acclaimed! (refused liege demand ver)
+	title = riseandfall_war_enhancement.20.t
+	desc = riseandfall_war_enhancement.20.d
+	type = character_event
+	theme = realm
+	
+	# Option: Seize power from the emperor.
+	option = { # Now's my chance, usurp the administrative ruler.
+		name = riseandfall_war_enhancement.20.a
+		trigger = {
+			scope:riseandfall_war_enhancement_attacker.liege = {
+				OR = {
+					has_government = administrative_government
+					is_independent_ruler = yes
+				}
+			}
+			root = {
+				is_independent_ruler = no
+			}
+		}
+		war_enhancement_administrative_liege_usurper = yes
+		war_enhancement_overthrow_emperor_administrative = yes
+		scope:riseandfall_war_enhancement_prev_liege = {
+			trigger_event = {
+					id = riseandfall_war_enhancement.5 #everything is falling apart! (admin edition)
+				}
+		}
+		ai_chance = {
+			base = -50
+			ai_value_modifier = {
+				ai_greed = 2
+				ai_honor = -1.5
+				ai_energy = 2.5
+				ai_compassion = -2
+				ai_boldness = 2.5
+				ai_sociability = 0.5
+				ai_vengefulness = 0.3
+			}
+			modifier = {
+				add = 20
+				root = {
+					has_trait = ambitious
+				}
+			}
+			opinion_modifier = { # Opinion Factor
+				who = root
+				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				multiplier = -5
+			}
+			modifier = {
+				add = 30
+				root = {
+					has_trait = ambitious
+				}
+			}
+			modifier = {
+				add = 75
+				scope:riseandfall_war_enhancement_attacker.liege = {
+					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
+				}
+			}
+		}
+	}
+	# Option: Decline to take action.
+	option = { # decline
+		name = riseandfall_war_enhancement.20.b
+		war_enhancement_enthroned_heir = yes
+		scope:riseandfall_war_enhancement_prev_liege = {
+			trigger_event = {
+					id = riseandfall_war_enhancement.5 #everything is falling apart! (admin edition)
+				}
+		}
+		ai_chance = {
+			base = 100
+			ai_value_modifier = {
+				ai_greed = -0.75
+				ai_boldness = -2.5
+				ai_vengefulness = -1
+				ai_honor = 0.3
+				ai_compassion = 0.3
+				ai_rationality = -0.2
+				ai_sociability = -1
+			}
+			modifier = {
+				add = 50
+				root = {
+					has_trait = content
+				}
+			}
+			
+			modifier = {
+				add = -50
+				root = {
+					has_trait = ambitious
+				}
+			}
+			opinion_modifier = { # Opinion Factor
+				who = root
+				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				multiplier = 2
+			}
+		}
+	}
+}
+
+riseandfall_war_enhancement.23 = { # We can usurp the emperor or do other stuff
+	title = riseandfall_war_enhancement.23.t
+	desc = riseandfall_war_enhancement.23.d
+	type = character_event
+	theme = realm
+	
+	# Option: Seize power from the emperor.
+	option = { # Now's my chance, usurp the administrative ruler.
+		name = riseandfall_war_enhancement.23.a
+		trigger = {
+			scope:riseandfall_war_enhancement_attacker.liege = {
+				OR = {
+					has_government = administrative_government
+					is_independent_ruler = yes
+				}
+			}
+			root = {
+				is_independent_ruler = no
+			}
+		}
+		war_enhancement_administrative_liege_usurper = yes
+		war_enhancement_overthrow_emperor_administrative = yes
+		scope:riseandfall_war_enhancement_prev_liege = {
+			trigger_event = {
+					id = riseandfall_war_enhancement.5 #everything is falling apart! (admin edition)
+				}
+		}
+		ai_chance = {
+			base = -50
+			ai_value_modifier = {
+				ai_greed = 2
+				ai_honor = -1.5
+				ai_energy = 2.5
+				ai_compassion = -2
+				ai_boldness = 2.5
+				ai_sociability = 0.5
+				ai_vengefulness = 0.3
+			}
+			modifier = {
+				add = 20
+				root = {
+					has_trait = ambitious
+				}
+			}
+			opinion_modifier = { # Opinion Factor
+				who = root
+				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				multiplier = -5
+			}
+			modifier = {
+				add = 30
+				root = {
+					has_trait = ambitious
+				}
+			}
+			modifier = {
+				add = 75
+				scope:riseandfall_war_enhancement_attacker.liege = {
+					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
+				}
+			}
+		}
+	}
+	# Option: Decline to take action.
+	option = { # decline
+		name = riseandfall_war_enhancement.21.b
+		war_enhancement_enthroned_heir = yes
+		scope:riseandfall_war_enhancement_prev_liege = {
+			trigger_event = {
+					id = riseandfall_war_enhancement.5 #everything is falling apart!
+				}
+		}
+		ai_chance = {
+			base = 100
+			ai_value_modifier = {
+				ai_greed = -0.75
+				ai_boldness = -2.5
+				ai_vengefulness = -1
+				ai_honor = 0.3
+				ai_compassion = 0.3
+				ai_rationality = -0.2
+				ai_sociability = -1
+			}
+			modifier = {
+				add = 50
+				root = {
+					has_trait = content
+				}
+			}
+			
+			modifier = {
+				add = -50
+				root = {
+					has_trait = ambitious
+				}
+			}
+			opinion_modifier = { # Opinion Factor
+				who = root
+				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				multiplier = 2
+			}
+		}
 	}
 }
 

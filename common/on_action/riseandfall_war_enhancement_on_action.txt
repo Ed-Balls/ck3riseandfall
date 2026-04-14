@@ -9,7 +9,7 @@ on_war_won_attacker = {
 
 # Scripted effect triggered when the attacker wins a war.
 # Handles post-war succession and rebellion mechanics for specific casus belli.
-riseandfall_war_enhancement_war_won = {
+riseandfall_war_enhancement_war_won = {		
 	effect = {
 		if = {
 			limit = {
@@ -17,7 +17,7 @@ riseandfall_war_enhancement_war_won = {
 					OR = {
 						using_cb = liberty_faction_war
 						using_cb = refused_liege_demand_war
-						#using_cb = depose_war
+						using_cb = claimant_faction_war
 					}
 				}
 			}
@@ -26,8 +26,19 @@ riseandfall_war_enhancement_war_won = {
 				save_scope_as = riseandfall_war_enhancement_prev_liege
 			}
 			# Save defender's primary title
-			scope:defender.primary_title = {
-				save_scope_as = riseandfall_war_enhancement_liege_primary_title
+			if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+							using_cb = claimant_faction_war
+						}
+					}
+				}
+				scope:defender.primary_title = {
+					save_scope_as = riseandfall_war_enhancement_liege_primary_title
+				}
 			}
 			
 			# Save attacker's liege
@@ -116,11 +127,116 @@ riseandfall_war_enhancement_war_won = {
 					save_scope_as = riseandfall_war_enhancement_attacker
 				}
 			}
-
-			# Trigger event for the defender (fallen ruler)
-			scope:defender = {
-				trigger_event = {
-					id = riseandfall_war_enhancement.5 #everything is falling apart!
+			
+			if = {
+				limit = {
+					scope:riseandfall_war_enhancement_attacker.liege = {
+						has_government = administrative_government
+					}       
+				}
+				scope:war = {
+					every_war_attacker = {
+						scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
+							change_appointment_investment = {
+									target = prev
+									value = {
+										value = 10
+										add = {
+											value = prev.diplomacy
+											multiply = 4
+										}
+										add = {
+											value = prev.martial
+											multiply = 8										
+										}
+										add = {
+											value = prev.stewardship
+											multiply = 3
+										}
+										add = {
+											value = prev.learning
+											multiply = 2
+										}
+										add = {
+											value = prev.intrigue
+											multiply = 4
+										}
+										add = {
+											value = prev.current_military_strength
+											divide = 2000
+										}
+									}
+							}
+						}
+					}
+				}
+			}
+			
+			if = {
+				limit = {
+					scope:war = { 
+							using_cb = claimant_faction_war 
+					}
+					scope:defender = {
+						highest_held_title_tier < scope:attacker.primary_title.tier
+					}
+					scope:riseandfall_war_enhancement_attacker.liege = {
+						NOT = { has_government = administrative_government }
+					}
+				}
+				# Trigger event for the attacker to choose what to do to the fallen ruler
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = {
+						id = riseandfall_war_enhancement.2 # 
+					}
+				}
+			}
+			else_if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+						}
+					}
+					scope:defender = {
+						NOT = { has_government = administrative_government }
+					}
+				}
+				scope:defender = {
+					trigger_event = {
+						id = riseandfall_war_enhancement.5 #everything is falling apart!
+					}
+				}
+			}
+			else_if = {
+				limit = {
+					scope:war = {
+						using_cb = refused_liege_demand_war
+					}
+					scope:defender = {
+						has_government = administrative_government
+					}
+				}
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = {
+						id = riseandfall_war_enhancement.20
+					}
+				}
+			}
+			else_if = {
+				limit = {
+					scope:war = {
+						using_cb = liberty_war
+					}
+					scope:defender = {
+						has_government = administrative_government
+					}
+				}
+				scope:riseandfall_war_enhancement_attacker = {
+					trigger_event = {
+						id = riseandfall_war_enhancement.21
+					}
 				}
 			}
 		}
