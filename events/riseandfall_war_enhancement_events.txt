@@ -61,11 +61,12 @@ riseandfall_war_enhancement.1 = {
 				scope:riseandfall_war_enhancement_attacker = {
 					has_government = clan_government
 				}
-				scope:riseandfall_war_enhancement_attacker.liege = {
+				scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 					has_government = clan_government
+					is_liege_or_above_of = root
 				}
 				scope:riseandfall_war_enhancement_attacker = {
-					NOT = { house = scope:riseandfall_war_enhancement_attacker.liege.house }
+					NOT = { house = scope:riseandfall_war_enhancement_liege_primary_title.holder.house }
 				}
 			}
 		}
@@ -82,7 +83,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -2
 			}
 			modifier = {
@@ -94,13 +95,13 @@ riseandfall_war_enhancement.1 = {
 			modifier = {
 				add = -60
 				root = {
-					house = scope:riseandfall_war_enhancement_attacker.liege.house 
+					house = scope:riseandfall_war_enhancement_liege_primary_title.holder.house 
 				}
 			}
 			modifier = {
 				add = -30
 				root = {
-					dynasty = scope:riseandfall_war_enhancement_attacker.liege.dynasty 
+					dynasty = scope:riseandfall_war_enhancement_liege_primary_title.holder.dynasty 
 				}
 			}
 			
@@ -118,20 +119,13 @@ riseandfall_war_enhancement.1 = {
 	option = { # 
 		name = riseandfall_war_enhancement.1.h
 		trigger = {
-			AND = {
-				scope:riseandfall_war_enhancement_attacker = {
+				scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+					is_liege_or_above_of = root
 					OR = {
 						has_government = nomad_government
 						has_government = tribal_government
 					}
 				}
-				scope:riseandfall_war_enhancement_attacker.liege = {
-					OR = {
-						has_government = nomad_government
-						has_government = tribal_government
-					}
-				}
-			}
 		}
 		war_enhancement_primitive_overthrow = yes
 		war_enhancement_primitive_seize = yes
@@ -158,13 +152,13 @@ riseandfall_war_enhancement.1 = {
 			modifier = {
 				add = -60
 				root = {
-					house = scope:riseandfall_war_enhancement_attacker.liege.house 
+					house = scope:riseandfall_war_enhancement_liege_primary_title.holder.house 
 				}
 			}
 			modifier = {
 				add = -30
 				root = {
-					dynasty = scope:riseandfall_war_enhancement_attacker.liege.dynasty 
+					dynasty = scope:riseandfall_war_enhancement_liege_primary_title.holder.dynasty 
 				}
 			}
 			
@@ -216,7 +210,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -232,13 +226,14 @@ riseandfall_war_enhancement.1 = {
 	option = { # lets get rid of this silly elective system.
 		name = riseandfall_war_enhancement.1.c
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				is_liege_or_above_of = root
 				OR = {
 					has_government = feudal_government
 					has_government = tribal_government
 				}
 			}
-			scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
+			scope:riseandfall_war_enhancement_liege_primary_title = {
 				has_title_law_flag = elective_succession_law
 			}
 			root = {
@@ -266,7 +261,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -282,10 +277,11 @@ riseandfall_war_enhancement.1 = {
 	option = { # 
 		name = riseandfall_war_enhancement.1.f
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 				has_government = feudal_government
+				is_liege_or_above_of = root
 			}
-			scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
+			scope:riseandfall_war_enhancement_liege_primary_title = {
 					NOT = { has_title_law = princely_elective_succession_law }
 					this = title:e_hre
 			}
@@ -315,7 +311,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -332,6 +328,7 @@ riseandfall_war_enhancement.1 = {
 		name = riseandfall_war_enhancement.1.d
 		trigger = {
 			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				is_liege_or_above_of = root
 				is_independent_ruler = yes
 			}
 			OR = {
@@ -384,7 +381,7 @@ riseandfall_war_enhancement.1 = {
 	option = { # Now's my chance, usurp the administrative ruler.
 		name = riseandfall_war_enhancement.1.i
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 				AND = {
 					has_government = administrative_government
 					is_independent_ruler = yes
@@ -415,7 +412,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -426,7 +423,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			modifier = {
 				add = 75
-				scope:riseandfall_war_enhancement_attacker.liege = {
+				scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
 				}
 			}
@@ -463,7 +460,7 @@ riseandfall_war_enhancement.1 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = 2
 			}
 		}
@@ -541,7 +538,7 @@ riseandfall_war_enhancement.2 = {
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -0.3
 			}
 			modifier = { #  we have a more savage form of government
@@ -1698,8 +1695,8 @@ riseandfall_war_enhancement.20 = { # New Emperor acclaimed! (refused liege deman
 	option = { # Now's my chance, usurp the administrative ruler.
 		name = riseandfall_war_enhancement.20.a
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
-				OR = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				AND = {
 					has_government = administrative_government
 					is_independent_ruler = yes
 				}
@@ -1734,7 +1731,7 @@ riseandfall_war_enhancement.20 = { # New Emperor acclaimed! (refused liege deman
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -1745,7 +1742,7 @@ riseandfall_war_enhancement.20 = { # New Emperor acclaimed! (refused liege deman
 			}
 			modifier = {
 				add = 75
-				scope:riseandfall_war_enhancement_attacker.liege = {
+				scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
 				}
 			}
@@ -1786,7 +1783,7 @@ riseandfall_war_enhancement.20 = { # New Emperor acclaimed! (refused liege deman
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = 2
 			}
 		}
@@ -1803,7 +1800,7 @@ riseandfall_war_enhancement.23 = { # We can usurp the emperor or do other stuff
 	option = { # Now's my chance, usurp the administrative ruler.
 		name = riseandfall_war_enhancement.23.a
 		trigger = {
-			scope:riseandfall_war_enhancement_attacker.liege = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 				OR = {
 					has_government = administrative_government
 					is_independent_ruler = yes
@@ -1839,7 +1836,7 @@ riseandfall_war_enhancement.23 = { # We can usurp the emperor or do other stuff
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = -5
 			}
 			modifier = {
@@ -1850,7 +1847,7 @@ riseandfall_war_enhancement.23 = { # We can usurp the emperor or do other stuff
 			}
 			modifier = {
 				add = 75
-				scope:riseandfall_war_enhancement_attacker.liege = {
+				scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 					is_imprisoned_by = scope:riseandfall_war_enhancement_attacker
 				}
 			}
@@ -1891,7 +1888,7 @@ riseandfall_war_enhancement.23 = { # We can usurp the emperor or do other stuff
 			}
 			opinion_modifier = { # Opinion Factor
 				who = root
-				opinion_target = scope:riseandfall_war_enhancement_attacker.liege
+				opinion_target = scope:riseandfall_war_enhancement_liege_primary_title.holder
 				multiplier = 2
 			}
 		}
