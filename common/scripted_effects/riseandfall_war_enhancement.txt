@@ -19,7 +19,6 @@ war_enhancement_imprison_family = {
 			}
 			save_temporary_scope_as = riseandfall_war_enhancement_tbi
 			root = {
-				imprison = { target = scope:riseandfall_war_enhancement_tbi }
 				imprison = {
 					target = scope:riseandfall_war_enhancement_tbi
 					type = house_arrest
@@ -180,7 +179,6 @@ war_enhancement_overthrow_electoral_system = {
 								previous_holder = scope:riseandfall_war_enhancement_prev_liege
 							}
 						}
-						has_claim = root
 						root = { has_claim_on = prev }
 					}
 					this = title_capital_county
@@ -789,7 +787,6 @@ war_enhancement_seize_power = {
 						}
 						title_held_years < 1
 						OR = {
-							has_claim = root
 							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
@@ -990,7 +987,6 @@ war_enhancement_clan_seize = {
 						}
 						title_held_years < 1
 						OR = {
-							has_claim = root
 							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
@@ -1109,7 +1105,6 @@ war_enhancement_primitive_seize = {
 						}
 						title_held_years < 1
 						OR = {
-							has_claim = root
 							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
