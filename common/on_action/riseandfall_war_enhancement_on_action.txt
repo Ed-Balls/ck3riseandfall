@@ -140,6 +140,7 @@ riseandfall_war_enhancement_war_won = {
 					save_scope_as = riseandfall_war_enhancement_attacker
 				}
 			}
+<<<<<<< HEAD
 			
 			if = {
 				limit = {
@@ -263,6 +264,7 @@ riseandfall_war_enhancement_war_won = {
 						id = riseandfall_war_enhancement.24
 					}
 				}
+=======
 
 			# Trigger event for the defender (fallen ruler)
 			scope:defender = {
@@ -341,6 +343,7 @@ riseandfall_war_enhancement_on_death = {
 			trigger_event = {
 				id = riseandfall_war_enhancement.4
 				days = 4
+>>>>>>> upstream/main
 			}
 			remove_from_list = riseandfall_war_enhancement_members
 		}

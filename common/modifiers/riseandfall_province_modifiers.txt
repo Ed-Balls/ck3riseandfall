@@ -1,8 +1,10 @@
 ﻿# Rise and Fall Province Modifiers
 
 riseandfall_authority_collapse = {
+<<<<<<< HEAD
     development_decline = -1
     county_opinion_add = -5
+=======
     county_opinion_add = -10000
     icon = byzantine_crown_negative
 }
@@ -11,5 +13,6 @@ riseandfall_authority_collapse = {
 # Causes opinion collapse but no development damage — the people resist foreign rule, not progress.
 riseandfall_nationalist_revolt = {
     county_opinion_add = -1000
+>>>>>>> upstream/main
     icon = byzantine_crown_negative
 }
