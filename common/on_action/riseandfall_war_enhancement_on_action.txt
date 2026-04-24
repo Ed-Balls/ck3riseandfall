@@ -180,7 +180,7 @@ riseandfall_war_enhancement_war_won = {
 					scope:defender = {
 						highest_held_title_tier < scope:attacker.primary_title.tier
 					}
-					scope:riseandfall_war_enhancement_attacker.liege = {
+					scope:riseandfall_war_enhancement_attacker = {
 						NOT = { has_government = administrative_government }
 					}
 				}
@@ -212,30 +212,42 @@ riseandfall_war_enhancement_war_won = {
 			else_if = {
 				limit = {
 					scope:war = {
-						using_cb = refused_liege_demand_war
+						OR = {
+							using_cb = refused_liege_demand_war
+							using_cb = liberty_war
+						}
 					}
-					scope:defender = {
+					scope:riseandfall_war_enhancement_attacker = {
 						has_government = administrative_government
+					}
+					scope:riseandfall_war_enhancement_liege_primary_title = {
+						NOT = { current_heir = scope:riseandfall_war_enhancement_attacker }
 					}
 				}
 				scope:riseandfall_war_enhancement_attacker = {
 					trigger_event = {
-						id = riseandfall_war_enhancement.20
+						id = riseandfall_war_enhancement.23
 					}
 				}
 			}
 			else_if = {
 				limit = {
 					scope:war = {
-						using_cb = liberty_war
+						OR = {
+							using_cb = refused_liege_demand_war
+							using_cb = liberty_war
+						}
 					}
-					scope:defender = {
+					scope:riseandfall_war_enhancement_attacker = {
 						has_government = administrative_government
+					}
+					scope:riseandfall_war_enhancement_liege_primary_title = {
+						current_heir = scope:riseandfall_war_enhancement_attacker
 					}
 				}
 				scope:riseandfall_war_enhancement_attacker = {
 					trigger_event = {
-						id = riseandfall_war_enhancement.21
+						id = riseandfall_war_enhancement.24
 					}
 				}
 			}
