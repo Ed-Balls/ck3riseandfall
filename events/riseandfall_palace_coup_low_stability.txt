@@ -23,52 +23,55 @@ palace_coup.1001 = {
 		name = palace_coup.1001.a
 		custom_tooltip = palace_coup.1001.tooltip
 		trigger = { exists = scope:challenger }
-		# Ask a player challenger for confirmation, otherwise continue directly.
-		if = {
-			limit = { exists = scope:potential_challenger }
-			scope:potential_challenger = { trigger_event = { id = palace_coup.1101 } }
-		}
-		else = {
-			trigger_event = { id = palace_coup.1002 }
-		}
+		# Trigger the confirmation or choice event
+		trigger_event = { id = palace_coup.1001.1 }
 		ai_chance = { base = 100 }
 	}
 
 }
 
 # Player confirmation event: Asks the player challenger if they want to proceed with the palace coup
-palace_coup.1101 = {
+palace_coup.1001.1 = {
 	type = character_event
-	title = palace_coup.1101.t
-	desc = palace_coup.1101.d
+	title = palace_coup.1001.1.t
+	desc = palace_coup.1001.1.d
 	theme = court
 
 	left_portrait = {
-		character = scope:event_root
+		character = root
 	}
 	right_portrait = {
-		character = root
+		character = scope:potential_challenger
+	}
+
+	immediate = {
+		if = {
+			limit = { NOT = { exists = scope:potential_challenger } }
+			trigger_event = { id = palace_coup.1002 }
+		}
 	}
 
 	option = {
-		name = palace_coup.1101.a
-		custom_tooltip = palace_coup.1101.tooltip
+		name = palace_coup.1001.1.a
+		custom_tooltip = palace_coup.1001.1.tooltip
+		trigger = { exists = scope:potential_challenger }
 		# Accept the palace coup
-		save_scope_as = challenger
-		scope:event_root = { trigger_event = { id = palace_coup.1002 } }
+		scope:potential_challenger = { save_scope_as = challenger }
+		trigger_event = { id = palace_coup.1002 }
 		ai_chance = { base = 0 }  # Players only
 	}
 
 	option = {
-		name = palace_coup.1101.b
-		custom_tooltip = palace_coup.1101.tooltip_no
+		name = palace_coup.1001.1.b
+		custom_tooltip = palace_coup.1001.1.tooltip_no
+		trigger = { exists = scope:potential_challenger }
 		# Decline, use backup challenger
-		scope:event_root = { trigger_event = { id = palace_coup.1002 } }
+		trigger_event = { id = palace_coup.1002 }
 		ai_chance = { base = 100 }
 	}
 }
 
-# Main confrontation event: Ruler chooses whether to submit or slip away and raise a revolt
+# Main confrontation event: Ruler chooses to duel the challenger or attempt to flee
 palace_coup.1002 = {
 	type = character_event
 	title = palace_coup.1002.t
@@ -82,57 +85,143 @@ palace_coup.1002 = {
 		character = scope:challenger
 	}
 
-	option = {
-		name = palace_coup.1002.a
-		custom_tooltip = palace_coup.1002.surrender.tooltip
-		trigger = { exists = scope:challenger }
-		hidden_effect = { riseandfall_palace_coup_become_puppet = yes }
+	immediate = {
+		riseandfall_calculate_total_side_prowess = yes
+		scope:challenger = { riseandfall_calculate_total_side_prowess = yes }
 
-		ai_chance = {
-			base = 50
-			modifier = { add = 45 root = { has_trait = craven } }
-			modifier = { add = 35 root = { has_trait = content } }
-			modifier = { add = 20 root = { has_trait = trusting } }
-			modifier = { add = 25 root = { is_adult = no } }
-			modifier = { add = 25 root.current_military_strength < scope:challenger.current_military_strength }
-			modifier = { add = 15 root = { realm_size < 12 } }
-			modifier = { add = -45 root = { has_trait = ambitious } }
-			modifier = { add = -30 root = { has_trait = brave } }
-			modifier = { add = -25 root = { has_trait = vengeful } }
-			modifier = { add = -15 root = { has_trait = arrogant } }
-			modifier = { add = -25 root.current_military_strength > scope:challenger.current_military_strength }
-			modifier = { add = -15 root = { realm_size >= 20 } }
+		# Copy calculated totals from event_root into the root and challenger characters so localization can read them
+		if = {
+			limit = { scope:event_root = { has_variable = riseandfall_total_prowess_root } }
+			root = { set_variable = { name = riseandfall_total_prowess_root value = scope:event_root.var:riseandfall_total_prowess_root } }
+		}
+		if = {
+			limit = { scope:event_root = { has_variable = riseandfall_total_prowess_chall } }
+			scope:challenger = { set_variable = { name = riseandfall_total_prowess_chall value = scope:event_root.var:riseandfall_total_prowess_chall } }
+			# Also copy challenger's total onto the root character so a single tooltip subject can show both values
+			root = { set_variable = { name = riseandfall_total_prowess_chall value = scope:event_root.var:riseandfall_total_prowess_chall } }
+		}
+
+		# For intrigue-based flee option, use individual character intrigue values (not a team total)
+		# compute AI add variables on root (clamped) for the duel and the intrigue flee choice
+		root = {
+			# Duel weight
+			set_variable = { name = riseandfall_ai_duel_add value = 0 }
+			change_variable = { name = riseandfall_ai_duel_add add = var:riseandfall_total_prowess_root }
+			change_variable = { name = riseandfall_ai_duel_add subtract = var:riseandfall_total_prowess_chall }
+			change_variable = { name = riseandfall_ai_duel_add multiply = 1 }
+			clamp_variable = { name = riseandfall_ai_duel_add min = -50 max = 50 }
+
+			# Intrigue weight: compute from character intrigue only (root.intrigue - challenger.intrigue)
+			set_variable = { name = riseandfall_ai_intrigue_add value = intrigue }
+			change_variable = { name = riseandfall_ai_intrigue_add subtract = scope:challenger.intrigue }
+			clamp_variable = { name = riseandfall_ai_intrigue_add min = -50 max = 50 }
 		}
 	}
 
 	option = {
-		name = palace_coup.1002.b
-		custom_tooltip = palace_coup.1002.rebellion.tooltip
-		trigger = {
-			exists = scope:challenger
-			NOT = { primary_title = { has_variable = rf_successor_origin_title } }
+		name = palace_coup.1002.a
+		trigger = { exists = scope:challenger root = { is_adult = yes } }
+
+		# Casualties & injuries are handled by a scripted effect to keep the event file clean
+		hidden_effect = { riseandfall_palace_coup_casualties = yes }
+
+		duel = {
+			challenge_variable = riseandfall_total_prowess
+			target = scope:challenger
+
+			# Root wins duel
+		30 = {
+			compare_modifier = {
+				value = scope:duel_value
+				multiplier = 0.5
+				min = 0
+			}
+
+			custom_tooltip = palace_coup.1002.win.tooltip
+
+			# Root wins duel: do not transfer the challenger's gold; just kill the challenger
+
+			hidden_effect = {
+				riseandfall_palace_coup_root_wins_prowess_duel = yes
+			}
 		}
-		hidden_effect = { riseandfall_palace_coup_start_rebellion = yes }
+
+		# Challenger wins duel
+		70 = {
+			compare_modifier = {
+				value = scope:duel_value
+				multiplier = -0.5
+				min = 60
+			}
+
+			custom_tooltip = palace_coup.1002.lose.tooltip
+
+			hidden_effect = {
+				riseandfall_palace_coup_challenger_wins_prowess_duel = yes
+			}
+		}
+		}
 
 		ai_chance = {
 			base = 50
-			modifier = { add = 45 root = { has_trait = ambitious } }
-			modifier = { add = 35 root = { has_trait = brave } }
-			modifier = { add = 25 root = { has_trait = vengeful } }
-			modifier = { add = 15 root = { has_trait = arrogant } }
-			modifier = { add = 25 root.current_military_strength > scope:challenger.current_military_strength }
-			modifier = { add = 15 root = { realm_size >= 20 } }
-			modifier = { add = -45 root = { has_trait = craven } }
-			modifier = { add = -30 root = { has_trait = content } }
-			modifier = { add = -20 root = { has_trait = trusting } }
-			modifier = { add = -25 root = { is_adult = no } }
-			modifier = { add = -25 root.current_military_strength < scope:challenger.current_military_strength }
-			modifier = { add = -15 root = { realm_size < 12 } }
+			modifier = { add = var:riseandfall_ai_duel_add }
 		}
+	}
+
+	option = {
+	name = palace_coup.1002.b
+	trigger = { exists = scope:challenger root = { is_adult = yes } }
+
+		duel = {
+			skill = intrigue
+			target = scope:challenger
+
+			# Success: root escapes
+			60 = {
+				compare_modifier = {
+					value = scope:duel_value
+					multiplier = 3.5
+					min = -49
+				}
+
+				custom_tooltip = palace_coup.1002.flee_success.tooltip
+
+				hidden_effect = {
+					riseandfall_palace_coup_root_flees_success = yes
+				}
+			}			# Failure: challenger captures/seizes the ruler
+			40 = {
+				compare_modifier = {
+					value = scope:duel_value
+					multiplier = -3.5
+					min = -49
+				}
+
+				custom_tooltip = palace_coup.1002.fail.tooltip
+
+				hidden_effect = {
+					riseandfall_palace_coup_root_flees_failure = yes
+				}
+			}
+		}
+
+		ai_chance = {
+			base = 50
+			modifier = { add = var:riseandfall_ai_intrigue_add }
+		}
+	}
+
+	# If the current ruler is a child, they cannot duel or flee — they should simply yield
+	option = {
+		name = palace_coup.1002.c
+		custom_tooltip = palace_coup.1002.child_tooltip
+		trigger = { exists = scope:challenger root = { is_adult = no } }
+		hidden_effect = { riseandfall_palace_coup_root_flees_failure = yes }
+		ai_chance = { base = 100 }
 	}
 }
 
-# Rebellion event: The ruler slips away and turns the coup into a wider civil war
+# Escape success event: Ruler successfully flees and calls banners to reclaim the throne
 palace_coup.1003 = {
 	type = character_event
 	title = palace_coup.1003.t
@@ -147,11 +236,13 @@ palace_coup.1003 = {
 		name = palace_coup.1003.a
 		custom_tooltip = palace_coup.1003.tooltip
 		# Call the banners / raise the vassal levy
+		# Trigger the warlord path for the challenger (raise banners handled there)
+		riseandfall_palace_coup_challenger_calls_banners = yes
 		ai_chance = { base = 100 }
 	}
 }
 
-# Surrender event: Notification that the ruler now continues only as a puppet
+# Puppeted after duel loss: Notification that the ruler is now a puppet under the challenger
 palace_coup.1004 = {
 	type = character_event
 	title = palace_coup.1004.t
@@ -170,6 +261,12 @@ palace_coup.1004 = {
 			if = {
 				limit = { root = { has_active_diarchy = yes } }
 				root = {
+					# Destroy temporary camp title (if present) so challenger is not treated as a ruler
+					if = {
+						limit = { exists = scope:palace_coup_challenger_camp_title scope:challenger = { has_title = scope:palace_coup_challenger_camp_title } }
+						scope:challenger = { destroy_title = scope:palace_coup_challenger_camp_title }
+					}
+
 					# Only set diarch when challenger can be a valid puppet master courtier.
 					if = {
 						limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } }
@@ -187,6 +284,11 @@ palace_coup.1004 = {
 						set_variable = { name = puppet_master_cooldown value = yes days = 365 }
 					}
 				}
+			}
+			# Give challenger influence hook on the defeated ruler
+			if = {
+				limit = { scope:challenger = { is_alive = yes } root = { is_alive = yes } }
+				scope:challenger = { add_hook = { target = root type = strong_favor_hook } }
 			}
 		}
 		ai_chance = { base = 100 }
@@ -210,6 +312,8 @@ palace_coup.1005 = {
 			# Defensive: ensure puppet regency exists and challenger set as diarch
 			if = { limit = { NOT = { root = { has_active_diarchy = yes } } } root = { try_start_diarchy = puppet_regency } }
 			if = { limit = { root = { has_active_diarchy = yes } } root = { set_diarch = scope:challenger set_diarchy_type = puppet_regency set_diarchy_swing = 90 } }
+			# Give challenger a strong_favor_hook on the defeated ruler
+			scope:challenger = { add_hook = { target = root type = strong_favor_hook } }
 		}
 		ai_chance = { base = 100 }
 	}
@@ -233,7 +337,7 @@ palace_coup.2001 = {
 	}
 }
 
-# Challenger notification: The ruler submitted and now reigns only as a puppet
+# Challenger wins duel: Notification to challenger that they won and puppeted the ruler
 palace_coup.2002 = {
 	type = character_event
 	title = palace_coup.2002.t
@@ -250,7 +354,7 @@ palace_coup.2002 = {
 	}
 }
 
-# Challenger notification: The ruler escaped and is rallying a rebellion
+# Root escapes successfully: Notification to challenger that the ruler escaped and is calling banners
 palace_coup.2003 = {
 	type = character_event
 	title = palace_coup.2003.t

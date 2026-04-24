@@ -36,7 +36,7 @@ warlord.1002 = {
     right_portrait = root
 
     immediate = {
-        save_opinion_value_as = { name = liege_opinion target = liege }
+        # Present a choice; effects happen in options below
     }
 
     option = {
@@ -48,6 +48,7 @@ warlord.1002 = {
             modifier = {
                 # only landed vassals consider rebellion
                 add = 100
+                is_independent_ruler = no
             }
             modifier = {
                 # low crown authority makes vassals emboldened
@@ -56,110 +57,30 @@ warlord.1002 = {
                     has_realm_law = crown_authority_0
                 }
             }
-            modifier = {
-                add = { subtract = scope:liege_opinion }
-                always = yes
-            }
-            modifier = {
-                add = 40
-                has_trait = ambitious
-            }
-            modifier = {
-                add = 40
-                has_trait = vengeful
-            }
-            modifier = {
-                add = 20
-                has_trait = brave
-            }
-            modifier = {
-                add = 40
-                liege = {
-                    has_relation_rival = root
-                }
-            }
-            modifier = {
-                add = 40
-                has_trait = disloyal
-            }
-            modifier = {
-                add = 20
-                opinion = { target = liege value <= -20 }
-            }
-            modifier = {
-                add = -30
-                has_trait = loyal
-            }
-            modifier = {
-                add = -20
-                has_trait = craven
-            }
-            modifier = {
-                add = -20
-                has_trait = content
-            }
         }
     }
 
     option = {
         name = warlord.1002.b
-        # Remain loyal: record the choice so this event is not offered again soon
-        set_variable = { name = riseandfall_warlord_choice_made value = yes years = 3 }
-        # For the player, also set the loyal flag so the path manager decision becomes available
-        if = {
-            limit = { is_ai = no }
-            add_character_flag = riseandfall_warlord_player_loyal
-        }
+        # Remain loyal: boost relationzs with liege instead of adding trait
         riseandfall_warlord_remain_loyal = yes
         # small positive opinion or stability bonus could be added by scripted effects
         ai_chance = {
             base = 0
             modifier = {
-                add = scope:liege_opinion
+                add = 100
+                is_independent_ruler = yes
+            }
+            modifier = {
+                add = 100
+                is_independent_ruler = no
+                opinion = { target = liege value >= 75 }
             }
             modifier = {
                 # high crown authority encourages loyalty
                 add = 100
                 liege = {
                     has_realm_law = crown_authority_2
-                }
-            }
-            modifier = {
-                add = 40
-                has_trait = loyal
-            }
-            modifier = {
-                add = 30
-                has_trait = patient
-            }
-            modifier = {
-                add = 30
-                has_trait = content
-            }
-            modifier = {
-                add = 20
-                has_trait = honest
-            }
-            modifier = {
-                add = 20
-                has_trait = just
-            }
-            modifier = {
-                add = -40
-                has_trait = vengeful
-            }
-            modifier = {
-                add = -30
-                has_trait = ambitious
-            }
-            modifier = {
-                add = -40
-                has_trait = disloyal
-            }
-            modifier = {
-                add = -40
-                liege = {
-                    has_relation_rival = root
                 }
             }
         }
@@ -176,110 +97,35 @@ warlord.1003 = {
     left_portrait = liege
     right_portrait = root
 
-    immediate = {
-        save_opinion_value_as = { name = liege_opinion target = liege }
-    }
-
     option = {
         name = warlord.1003.a
-        # Continue as warlord: continually evaluate claims
-        riseandfall_warlord_claim_liege_titles = yes
         ai_chance = {
             base = 0
             modifier = {
                 add = 100
-            }
-            modifier = {
-                add = { subtract = scope:liege_opinion }
-                always = yes
-            }
-            modifier = {
-                add = 40
-                has_trait = ambitious
-            }
-            modifier = {
-                add = 40
-                has_trait = vengeful
-            }
-            modifier = {
-                add = 30
-                has_trait = brave
-            }
-            modifier = {
-                add = 40
-                has_trait = disloyal
-            }
-            modifier = {
-                add = 40
-                liege = {
-                    has_relation_rival = root
-                }
-            }
-            modifier = {
-                add = -30
-                has_trait = loyal
-            }
-            modifier = {
-                add = -20
-                has_trait = patient
-            }
-            modifier = {
-                add = -20
-                has_trait = content
-            }
-            modifier = {
-                add = -20
-                has_trait = honest
+                NOT = { is_independent_ruler = yes }
             }
         }
+        # Give claims on the liege's own titles to the warlord (only for powerful vassals)
+        riseandfall_warlord_claim_liege_titles = yes
     }
     option = {
         name = warlord.1003.b
-        # Abandon the warlord path: remove trait and claims
-        riseandfall_warlord_abandon_path = yes
+        # Remove the warlord trait and abandon the path if opinion >= 50
         ai_chance = {
             base = 0
             modifier = {
-                add = scope:liege_opinion
+                add = 100
+                is_independent_ruler = yes
             }
             modifier = {
-                add = 40
-                has_trait = loyal
+                add = 100
+                opinion = { target = liege value >= 75 }
             }
-            modifier = {
-                add = 30
-                has_trait = patient
-            }
-            modifier = {
-                add = 30
-                has_trait = content
-            }
-            modifier = {
-                add = 20
-                has_trait = honest
-            }
-            modifier = {
-                add = 20
-                has_trait = just
-            }
-            modifier = {
-                add = -40
-                has_trait = vengeful
-            }
-            modifier = {
-                add = -30
-                has_trait = ambitious
-            }
-            modifier = {
-                add = -40
-                has_trait = disloyal
-            }
-            modifier = {
-                add = -40
-                liege = {
-                    has_relation_rival = root
-                }
-            }
+        }
+        if = {
+            limit = { opinion = { target = liege value >= 75 } }
+            riseandfall_warlord_abandon_path = yes
         }
     }
 }
