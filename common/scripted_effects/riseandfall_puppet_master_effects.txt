@@ -69,6 +69,10 @@ riseandfall_overthrow_liege_effect = {
 	}
 	# Transfer all held titles from recipient to actor
 	scope:recipient = {
+		if = {
+			limit = { has_active_diarchy = yes }
+			end_diarchy = yes
+		}
         # If the recipient has a capital county, transfer that county first
         if = {
             limit = { scope:recipient = { capital_county = { exists = yes } } }
@@ -82,29 +86,41 @@ riseandfall_overthrow_liege_effect = {
                 }
             }
         }
-		every_held_title = {
-			limit = {
-				holder = scope:recipient
-				# Avoid changing barony-level titles directly (engine requires changing the county instead)
-				NOT = { tier = tier_barony }
-				NOT = { is_noble_family_title = yes }
-			}
-			change_title_holder = {
-				holder = scope:actor
-				change = scope:change
-				take_baronies = yes
+		# Now iterate through all held titles explicitly and assign them to actor
+		scope:recipient = {
+			every_held_title = {
+				limit = {
+					# Don't transfer the baronies again if we transfer the top county, but we just skip baronies
+					NOT = { tier = tier_barony }
+					NOT = { is_noble_family_title = yes }
+					NOT = { is_head_of_faith = yes }
+				}
+				change_title_holder = {
+					holder = scope:actor
+					change = scope:change
+					take_baronies = yes
+				}
 			}
 		}
 		every_vassal = {
-			limit = { NOT = { this = scope:actor } }
+			limit = {
+				NOT = { this = scope:actor }
+				liege = scope:recipient
+			}
 			change_liege = {
 				liege = scope:actor
 				change = scope:change
 			}
 		}
-		change_liege = {
-			liege = scope:actor
-			change = scope:change
+		if = {
+			limit = { is_landed = yes }
+			change_liege = {
+				liege = scope:actor
+				change = scope:change
+			}
+		}
+		else = {
+			set_employer = scope:actor
 		}
 	}
 	resolve_title_and_vassal_change = scope:change

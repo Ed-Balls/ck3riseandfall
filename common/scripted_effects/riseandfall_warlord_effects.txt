@@ -1,5 +1,44 @@
-﻿riseandfall_warlord_roll_se = {
-    trigger_event = { id = warlord.1003 }
+﻿# Cleanup effect: enforces warlord trait consistency across all rulers.
+# Called from the yearly on_action and from title-change on_actions.
+# Never fires events — event logic lives in the on_action.
+riseandfall_warlord_cleanup_se = {
+    # Remove warlord from unlanded characters; only landed vassals may hold the trait
+    every_ruler = {
+        limit = { is_landed = no has_trait = warlord }
+        remove_trait = warlord
+    }
+
+    # Independent rulers who are warlords become retired warlords
+    every_independent_ruler = {
+        limit = { has_trait = warlord }
+        remove_trait = warlord
+        add_trait = retiredwarlord
+    }
+
+    # Non-independent rulers who were retired warlords regain the warlord trait
+    every_ruler = {
+        limit = { is_independent_ruler = no has_trait = retiredwarlord is_landed = yes }
+        remove_trait = retiredwarlord
+        add_trait = warlord
+    }
+
+    # Keep liege-title claims in sync for both player and AI warlord vassals.
+    # This runs from the yearly pulse and title-change on_actions, so growing past
+    # the threshold later still grants claims even if no event option is clicked.
+    every_ruler = {
+        limit = {
+            is_independent_ruler = no
+            is_landed = yes
+            has_trait = warlord
+        }
+        riseandfall_warlord_claim_liege_titles = yes
+    }
+
+    # If the player chose loyalty, enforce it by abandoning the path
+    every_ruler = {
+        limit = { is_ai = no has_character_flag = riseandfall_warlord_player_loyal has_trait = warlord }
+        riseandfall_warlord_abandon_path = yes
+    }
 }
 
 riseandfall_inherit_warlord_trait_se = {

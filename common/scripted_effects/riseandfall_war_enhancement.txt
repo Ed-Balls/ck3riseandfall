@@ -20,8 +20,14 @@ war_enhancement_imprison_family = {
 			save_temporary_scope_as = riseandfall_war_enhancement_tbi
 			root = {
 				imprison = { target = scope:riseandfall_war_enhancement_tbi }
+				imprison = {
+					target = scope:riseandfall_war_enhancement_tbi
+					type = house_arrest
+				}
 			}
 		}
+	}
+}
 
 # Event .1.a effect: Press claims
 war_enhancement_press_claims = {
@@ -43,6 +49,19 @@ war_enhancement_press_claims = {
 				root = {
 					has_claim_on = prev
 				}
+				OR = {
+							AND = {
+								OR = {
+									AND = {
+										previous_holder = { exists = yes }
+										previous_holder = scope:riseandfall_war_enhancement_prev_liege
+									}
+									holder = scope:riseandfall_war_enhancement_attacker.liege
+								}
+								title_held_years < 1
+							}
+							root = { has_claim_on = prev }
+						}
 			}
 			change_title_holder_include_vassals = {
 				holder = root
@@ -162,6 +181,7 @@ war_enhancement_overthrow_electoral_system = {
 							}
 						}
 						has_claim = root
+						root = { has_claim_on = prev }
 					}
 					this = title_capital_county
 				}
@@ -250,6 +270,88 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 						this = root
 						is_spouse_of = root					
 					}
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+		every_close_or_extended_family_member = {
+			limit = {
+				house = scope:riseandfall_war_enhancement_prev_liege.house
+				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+			}
+			if = {
+				limit = { 
+					primary_spouse = {
+						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					}
+				}
+				primary_spouse = {
+					death = { death_reason = death_siege killer = root }
+				}
+			}
+			death = { death_reason = death_siege killer = root }
+		}	
+		hidden_effect = {
+		every_courtier = {
+			limit = {
+				house = scope:riseandfall_war_enhancement_prev_liege.house
+				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+			}
+			if = {
+				limit = { 
+					primary_spouse = {
+						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					}
+				}
+				primary_spouse = {
+					death = { death_reason = death_siege killer = root }
+				}
+			}
+			death = { death_reason = death_siege killer = root }
+		}
+		}
+	}
+	if = {
+		limit = {
+			scope:riseandfall_war_enhancement_prev_liege.house = scope:riseandfall_war_enhancement_liege_primary_title.holder.house
+		}
+		scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+			death = { death_reason = death_siege killer = root }
+			if = {
+				limit = { 
+					primary_spouse = {
+						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+						NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
+					}
+				}
+				primary_spouse = {
+					death = { death_reason = death_siege killer = root }
+
+				}
+			}
+		}
+	}
+	scope:riseandfall_war_enhancement_prev_liege = {
+		if = {
+			limit = { 
+				primary_spouse = {
+					is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+					NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
+				}
+			}
+			primary_spouse = {
+				death = { death_reason = death_siege killer = root }
+			}
+		}
+	}
+	hidden_effect = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+		every_close_or_extended_family_member = {
+			limit = {
+				house = scope:riseandfall_war_enhancement_prev_liege.house
+				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+				NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
 			}
 			if = {
 				limit = { 
@@ -269,6 +371,9 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 							this = root
 							is_spouse_of = root					
 						}
+						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+						NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
 					}
 				}
 				primary_spouse = {
@@ -336,6 +441,76 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
+				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+			}
+			if = {
+				limit = { 
+					primary_spouse = {
+						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					}
+				}
+				primary_spouse = {
+					root = {
+						imprison = {
+							target = prev
+							type = house_arrest
+						}
+					}
+				}
+			}
+			root = {
+				imprison = {
+					target = prev
+					type = house_arrest
+				}
+			}
+		}	
+		hidden_effect = {
+		every_courtier = {
+			limit = {
+				house = scope:riseandfall_war_enhancement_prev_liege.house
+				is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+			}
+			if = {
+				limit = { 
+					primary_spouse = {
+						is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					}
+				}
+				primary_spouse = {
+					root = {
+						imprison = {
+							target = prev
+							type = house_arrest
+						}
+					}
+				}
+			}
+			root = {
+				imprison = {
+					target = prev
+					type = house_arrest
+				}
+			}
+		}
+		}
+	}
+	if = {
+		limit = {
+			scope:riseandfall_war_enhancement_prev_liege.house = scope:riseandfall_war_enhancement_liege_primary_title.holder.house
+		}
+		scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+			root = {
+				imprison = {
+					target = prev
+					type = house_arrest
+				}
+			}
+			if = {
+				limit = { 
+					primary_spouse = {
 						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
@@ -373,6 +548,37 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 					}
 				}
 				root = { imprison = { target = prev } }
+						NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
+					}
+				}
+				primary_spouse = {
+					root = {
+						imprison = {
+							target = prev
+							type = house_arrest
+						}
+					}
+
+				}
+			}
+		}
+	}
+	scope:riseandfall_war_enhancement_prev_liege = {
+		if = {
+			limit = { 
+				primary_spouse = {
+					is_at_same_location = scope:riseandfall_war_enhancement_prev_liege
+					NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
+					NOT = { has_relation_to = scope:riseandfall_war_enhancement_attacker }
+				}
+			}
+			primary_spouse = {
+				root = {
+					imprison = {
+						target = prev
+						type = house_arrest
+					}
+				}
 			}
 		}
 	}
@@ -424,6 +630,17 @@ war_enhancement_imprison_liege = {
 				}
 			}
 		}
+	root = {
+		imprison = {
+			target = scope:riseandfall_war_enhancement_prev_liege
+			type = house_arrest
+		}
+	}
+	scope:riseandfall_war_enhancement_attacker = {
+		trigger_event = {
+			id = riseandfall_war_enhancement.1
+		}		
+	}
 }
 
 # Event .3.a effect: Start war against liege
@@ -478,6 +695,11 @@ war_enhancement_abdicate_to_heir = {
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_liege_elective_title.holder
 						}
+					title_held_years < 1
+					OR = {
+							scope:riseandfall_liege_elective_title.current_heir = { has_claim_on = prev }
+						de_jure_liege = scope:riseandfall_liege_elective_title
+						de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
 					}
 					this = title_capital_county
 				}
@@ -568,6 +790,7 @@ war_enhancement_seize_power = {
 						title_held_years < 1
 						OR = {
 							has_claim = root
+							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
 						}
@@ -768,6 +991,7 @@ war_enhancement_clan_seize = {
 						title_held_years < 1
 						OR = {
 							has_claim = root
+							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
 						}
@@ -886,6 +1110,7 @@ war_enhancement_primitive_seize = {
 						title_held_years < 1
 						OR = {
 							has_claim = root
+							root = { has_claim_on = prev }
 							de_jure_liege = scope:riseandfall_liege_elective_title
 							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
 						}

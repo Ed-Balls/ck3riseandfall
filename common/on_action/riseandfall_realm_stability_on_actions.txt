@@ -6,7 +6,6 @@ yearly_global_pulse = {
     on_actions = {
         riseandfall_yearly_realm_stability
         riseandfall_clear_unlanded_realm_stability
-        riseandfall_dynamic_story_mode
     }
 }
 
@@ -48,6 +47,19 @@ on_title_gain_inheritance = {
 on_title_gain = {
     on_actions = {
         riseandfall_on_title_gain_inheritance
+        riseandfall_peasant_realm_cleanup_on_structure_change
+    }
+}
+
+on_vassal_gained = {
+    on_actions = {
+        riseandfall_peasant_realm_cleanup_on_structure_change
+    }
+}
+
+on_vassal_change = {
+    on_actions = {
+        riseandfall_peasant_realm_cleanup_on_structure_change
     }
 }
 
@@ -171,6 +183,62 @@ riseandfall_on_title_gain_inheritance = {
     }
 }
 
+riseandfall_peasant_realm_cleanup_on_structure_change = {
+    trigger = {
+        has_game_rule = riseandfall_realm_stability_enabled
+        is_landed = yes
+        OR = {
+            has_trait = peasant_leader
+            has_trait = populist_leader
+            AND = {
+                exists = liege
+                top_liege = {
+                    OR = {
+                        has_trait = peasant_leader
+                        has_trait = populist_leader
+                    }
+                }
+            }
+        }
+    }
+    effect = {
+        if = {
+            limit = {
+                exists = scope:title
+                scope:title.tier = tier_county
+            }
+            scope:title = {
+                riseandfall_clear_low_stability_county_modifiers_se = yes
+            }
+        }
+        if = {
+            limit = {
+                is_landed = yes
+                OR = {
+                    has_trait = peasant_leader
+                    has_trait = populist_leader
+                }
+            }
+            riseandfall_clear_peasant_victory_low_stability_modifiers_se = yes
+        }
+        else_if = {
+            limit = {
+                is_landed = yes
+                exists = liege
+                top_liege = {
+                    OR = {
+                        has_trait = peasant_leader
+                        has_trait = populist_leader
+                    }
+                }
+            }
+            top_liege = {
+                riseandfall_clear_peasant_victory_low_stability_modifiers_se = yes
+            }
+        }
+    }
+}
+
 riseandfall_yearly_realm_stability = {
     trigger = {
         has_game_rule = riseandfall_realm_stability_enabled
@@ -244,12 +312,5 @@ riseandfall_clear_unlanded_realm_stability = {
         # Clear realm stability variables & modifiers on unlanded characters yearly to
         # fix stale state for characters who lost their lands.
         riseandfall_clear_unlanded_stability_vars_se = yes
-    }
-}
-
-riseandfall_dynamic_story_mode = {
-    trigger = { has_game_rule = riseandfall_dynamic_story_mode_enabled }
-    effect = {
-        riseandfall_dynamic_story_mode_se = yes
     }
 }
