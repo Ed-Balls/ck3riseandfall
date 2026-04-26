@@ -505,16 +505,15 @@ riseandfall_war_enhancement.2 = {
 					has_government = administrative_government
 				}
 				scope:riseandfall_war_enhancement_prev_liege = {
+					NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
 					any_close_or_extended_family_member = {
 						OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
-						is_at_location = scope:riseandfall_liege_death_location
-						is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
-						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+							always = yes
+							is_at_location = scope:riseandfall_liege_death_location
+							is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
+							is_at_same_location = scope:riseandfall_war_enhancement_attacker
+							is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
+							location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 						}
 					}
 				}
@@ -592,16 +591,15 @@ riseandfall_war_enhancement.2 = {
 					has_government = administrative_government
 				}
 				scope:riseandfall_war_enhancement_prev_liege = {
+				NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
 					any_close_or_extended_family_member = {
 						OR = {
-							is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
+							always = yes
 							is_at_location = scope:riseandfall_liege_death_location
-							is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_attacker
-							is_in_the_same_court_or_as_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
-							is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
-							is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+							is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
+							is_at_same_location = scope:riseandfall_war_enhancement_attacker
 							is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-							is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+							location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 						}
 					}
 				}
@@ -628,14 +626,21 @@ riseandfall_war_enhancement.2 = {
 			scope:riseandfall_war_enhancement_prev_liege = {
 				is_alive = yes
 				OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
-						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_at_same_location = scope:riseandfall_war_enhancement_attacker
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location = {
+							county = {
+								holder = {
+										OR = {
+											target_is_liege_or_above = scope:riseandfall_war_enhancement_liege_primary_title.holder
+											this = scope:riseandfall_war_enhancement_liege_primary_title.holder
+										}
+								}
+								target_is_de_jure_liege_or_above = scope:riseandfall_war_enhancement_liege_primary_title
+							}
+						}
 				}
 				OR = {
 					is_imprisoned = NO
@@ -692,14 +697,21 @@ riseandfall_war_enhancement.2 = {
 			scope:riseandfall_war_enhancement_prev_liege = {
 				is_alive = yes
 				OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
-						is_in_the_same_location = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						is_at_same_location = scope:riseandfall_war_enhancement_attacker
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location = {
+							county = {
+								holder = {
+										OR = {
+											target_is_liege_or_above = scope:riseandfall_war_enhancement_liege_primary_title.holder
+											this = scope:riseandfall_war_enhancement_liege_primary_title.holder
+										}
+								}
+								target_is_de_jure_liege_or_above = scope:riseandfall_war_enhancement_liege_primary_title
+							}
+						}
 				}
 				NOT = { is_imprisoned = yes }
 			}
@@ -818,12 +830,10 @@ riseandfall_war_enhancement.22 = {
 	
 	option = { # liege died
 		name = riseandfall_war_enhancement.22.a
-		trigger = {
-			scope:riseandfall_war_enhancement_attacker = {
-				trigger_event = {
-					id = riseandfall_war_enhancement.2
-				}			
-			}
+		scope:riseandfall_war_enhancement_attacker = {
+			trigger_event = {
+				id = riseandfall_war_enhancement.2
+			}			
 		}
 	}
 }
@@ -1088,14 +1098,18 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 	
 	# Option: Attempt to escape with family via intrigue duel.
 	option = { #attempt to escape (with options such as hide, rally allies, or use martial maybe) #intrigue/craven characters prefer, most common
-		name = riseandfall_war_enhancement.5.b
-		
+		name = riseandfall_war_enhancement.5.f
+		trigger = {
+			root = {
+				gold >= 15
+			}
+		}
 		duel = {
 			skill = intrigue
 			target = scope:riseandfall_war_enhancement_attacker
 
 			# Success: root escapes
-			60 = {
+			50 = {
 				compare_modifier = {
 					value = scope:duel_value
 					multiplier = 3.5
@@ -1143,7 +1157,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 				}
 			}
 			# Failure: challenger captures/seizes the ruler
-			40 = {
+			50 = {
 				compare_modifier = {
 					value = scope:duel_value
 					multiplier = -3.5
@@ -1163,9 +1177,10 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 			base = 50
 			ai_value_modifier = {
 				ai_boldness = -0.2
-				ai_energy = 0.4
-				ai_rationality = 0.2
-				ai_honor = -0.6
+				ai_compassion = 1.2
+				ai_rationality = 0.5
+				ai_greed = -0.5
+				ai_honor = 0.75
 			}
 		}
 	}
@@ -1179,7 +1194,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 			target = scope:riseandfall_war_enhancement_attacker
 
 			# Success: root escapes
-			60 = {
+			75 = {
 				compare_modifier = {
 					value = scope:duel_value
 					multiplier = 3.5
@@ -1205,7 +1220,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 					}
 				}
 			}			# Failure: challenger captures/seizes the ruler
-			40 = {
+			25 = {
 				compare_modifier = {
 					value = scope:duel_value
 					multiplier = -3.5
@@ -1222,12 +1237,14 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 		}
 		
 		ai_chance = {
-			base = 50
+			base = 15
 			ai_value_modifier = {
-				ai_boldness = -0.2
-				ai_energy = 0.4
-				ai_rationality = 0.2
-				ai_honor = -0.6
+				ai_boldness = 0.2
+				ai_compassion = -1.2
+				ai_energy = 0.6
+				ai_rationality = 0.3
+				ai_honor = -1
+				ai_greed = 0.75
 			}
 		}
 	}
@@ -1378,7 +1395,7 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 	
 	# Option: Commit suicide (requires specific traits or flags).
 	option = { #commit suicide flavors
-		name = riseandfall_war_enhancement.5.d
+		name = riseandfall_war_enhancement.5.e
 		trigger = { 
 			OR = {
 				has_trait = depressed_1
@@ -1401,9 +1418,9 @@ riseandfall_war_enhancement.5 = { #Everything is falling apart, try to escape or
 		
 		war_enhancement_liege_slain = yes
 		
-		show_as_tooltip = {
-			committed_suicide_effect = yes
-		}
+#		show_as_tooltip = {
+#			committed_suicide_effect = yes
+#		}
 		scope:riseandfall_war_enhancement_attacker = {
 			trigger_event = { id = riseandfall_war_enhancement.22 } #Died in battle or suicided
 		}

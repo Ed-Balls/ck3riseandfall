@@ -49,6 +49,11 @@ riseandfall_war_enhancement_war_won = {
 			scope:attacker = {
 				save_scope_as = riseandfall_war_enhancement_rebellion_leader
 			}
+			
+			scope:defender.capital_county = {
+				save_scope_as = riseandfall_war_enhancement_liege_capital_location
+			}
+			
 			# Find the strongest contender among attackers
 			scope:war = {
 				ordered_war_attacker = {
@@ -136,6 +141,13 @@ riseandfall_war_enhancement_war_won = {
 				}
 				scope:war = {
 					every_war_attacker = {
+						limit = {
+							OR = {
+								is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker.liege.primary_title.holder
+								has_government = landless_adventurer_government
+							}
+							
+						}
 						scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
 							change_appointment_investment = {
 									target = prev

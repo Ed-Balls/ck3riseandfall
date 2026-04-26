@@ -149,41 +149,30 @@ war_enhancement_overthrow_electoral_system = {
 			save_scope_as = change
 		}		
 	}
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		every_held_title = { 
-			limit = { 
-				OR = {
-					AND = {
-						OR = {
-							holder = scope:riseandfall_war_enhancement_attacker.liege
-							AND = {
-								previous_holder = { exists = yes }
-								previous_holder = scope:riseandfall_war_enhancement_prev_liege
-							}
-						}
-						has_claim = root
-					}
-					this = title_capital_county
-				}
-				NOT = { has_title_law = noble_family_succession_law }
-			}
-			change_title_holder_include_vassals = {
-				holder = root
-				change = scope:change
-			}
+	scope:riseandfall_war_enhancement_liege_primary_title = {
+		change_title_holder_include_vassals = {
+			holder = root
+			change = scope:change
 		}
 	}
-		
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		change_liege = {
-			liege = root
-			change = scope:change
+	if = {
+		limit = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				primary_title = scope:riseandfall_war_enhancement_liege_primary_title
+			}
+		}
+		scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+			change_liege = {
+				liege = root
+				change = scope:change
+			}
 		}
 	}
 
 	root = {
 		resolve_title_and_vassal_change = scope:change
 	}
+	
 	if = {
 		limit = { 
 			scope:riseandfall_liege_elective_title = { 
@@ -236,18 +225,13 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 			limit = {
 					house = scope:riseandfall_war_enhancement_prev_liege.house
 					OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 					}
 					NOR = { 
-						house = scope:riseandfall_war_enhancement_attacker.house
-						this = root
 						is_spouse_of = root					
 					}
 			}
@@ -255,19 +239,15 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 				limit = { 
 					primary_spouse = {
 						OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 						}
 						NOR = { 
-							house = scope:riseandfall_war_enhancement_attacker.house
-							this = root
-							is_spouse_of = root					
+							is_spouse_of = root		
+								
 						}
 					}
 				}
@@ -280,14 +260,11 @@ war_enhancement_execute_liege_family = { #Massacre their house!
 		if = {
 			limit = {
 				OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 				}
 			}
 			death = { death_reason = death_siege killer = root }
@@ -314,16 +291,13 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 		if = {
 			limit = {
 				OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 				}
-				NOT = { is_imprisoned = yes }
+				NOR = { is_imprisoned = yes }
 			}
 			root = { imprison = { target = prev } }
 		}
@@ -331,17 +305,13 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 			limit = {
 				house = scope:riseandfall_war_enhancement_prev_liege.house
 				OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 				}
 				NOR = { 
-					this = root
 					is_imprisoned = yes
 				}
 			}
@@ -349,17 +319,13 @@ war_enhancement_imprison_liege_family = { #Imprison their house!
 				limit = { 
 					primary_spouse = {
 						OR = {
-						is_at_location = scope:riseandfall_war_enhancement_liege_primary_title.holder.location
 						is_at_location = scope:riseandfall_liege_death_location
 						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_attacker
-						is_in_the_same_court_as_or_guest = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_at_same_location = scope:riseandfall_war_enhancement_attacker
-						is_at_same_location = scope:riseandfall_war_enhancement_liege_primary_title.holder
 						is_vassal_or_below_of = scope:riseandfall_war_enhancement_attacker
-						is_vassal_or_below_of = scope:riseandfall_war_enhancement_liege_primary_title.holder
+						location.duchy = scope:riseandfall_war_enhancement_liege_capital_location.duchy
 						}
-						NOT = { house = scope:riseandfall_war_enhancement_attacker.house }
-						NOT = { is_imprisoned = yes }
+						NOR = { is_imprisoned = yes }
 					}
 				}
 				primary_spouse = {
@@ -750,47 +716,20 @@ war_enhancement_clan_seize = {
 		}
 	}
 	add_tyranny = 10
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		every_held_title = { 
-			limit = { 
-				root = {
-				NOT = { is_independent_ruler = yes }
-				}
-				OR = {
-					AND = {
-						OR = {
-							holder = scope:riseandfall_war_enhancement_attacker.liege
-							AND = {
-								previous_holder = { exists = yes }
-								previous_holder = scope:riseandfall_war_enhancement_prev_liege
-							}
-						}
-						title_held_years < 1
-						OR = {
-							has_claim = root
-							de_jure_liege = scope:riseandfall_liege_elective_title
-							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
-						}
-					}
-					this = title_capital_county
-				}
+	if = {
+		limit = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				primary_title = scope:riseandfall_war_enhancement_liege_primary_title
 			}
-			change_title_holder_include_vassals = {
-				holder = root
+		}
+		scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+			change_liege = {
+				liege = root
 				change = scope:change
 			}
 		}
 	}
-	
-	if = {
-		limit = { root = { NOT = { is_independent_ruler = yes } } }
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		change_liege = {
-			liege = root
-			change = scope:change
-		}
-	}
-	}
+
 	root = {
 		resolve_title_and_vassal_change = scope:change
 	}
@@ -867,48 +806,21 @@ war_enhancement_primitive_seize = {
 	}
 	add_tyranny = 5
 	add_prestige = 200
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		every_held_title = { 
-			limit = { 
-				root = {
-				NOT = { is_independent_ruler = yes }
-				}
-				is_titular = no
-				OR = {
-					AND = {
-						OR = {
-							holder = scope:riseandfall_war_enhancement_attacker.liege
-							AND = {
-								previous_holder = { exists = yes }
-								previous_holder = scope:riseandfall_war_enhancement_prev_liege
-							}
-						}
-						title_held_years < 1
-						OR = {
-							has_claim = root
-							de_jure_liege = scope:riseandfall_liege_elective_title
-							de_facto_liege = scope:riseandfall_war_enhancement_attacker.liege
-						}
-					}
-					this = title_capital_county
-				}
+	
+	if = {
+		limit = {
+			scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+				primary_title = scope:riseandfall_war_enhancement_liege_primary_title
 			}
-			change_title_holder_include_vassals = {
-				holder = root
+		}
+		scope:riseandfall_war_enhancement_liege_primary_title.holder = {
+			change_liege = {
+				liege = root
 				change = scope:change
 			}
 		}
 	}
-	
-	if = {
-		limit = { root = { NOT = { is_independent_ruler = yes } } }
-	scope:riseandfall_war_enhancement_attacker.liege = {
-		change_liege = {
-			liege = root
-			change = scope:change
-		}
-	}
-	}
+
 	root = {
 		resolve_title_and_vassal_change = scope:change
 	}
