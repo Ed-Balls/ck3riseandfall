@@ -1,4 +1,4 @@
-﻿##########################
+##########################
 # Rise and Fall - Realm Stability
 # Computes a 0..100 realm stability score and stores it on the ruler as
 # riseandfall_realm_stability_score
@@ -124,9 +124,10 @@ riseandfall_calculate_realm_stability_se = {
     #   - stat above the global average => positive contribution of +1 per point above (cap +10)
     set_variable = { name = riseandfall_rs_stats_component value = 0 }
 
-    # If ruler is under regency/puppet_regency, save the active diarch scope so we can read their stats.
+    # If ruler is under a regular regency, save the active diarch scope so we can read the regent's stats.
+    # Puppet regencies now use the ruler's own stats for realm stability calculations.
     if = {
-        limit = { OR = { has_diarchy_type = regency has_diarchy_type = puppet_regency } }
+        limit = { has_diarchy_type = regency }
         diarch = { save_scope_as = diarch }
         set_variable = { name = riseandfall_rs_use_diarch_stats value = 1 }
     }
@@ -491,8 +492,11 @@ riseandfall_calculate_realm_stability_se = {
     clamp_variable = { name = riseandfall_rs_vassals_component min = -20 max = 20 }
 
     ########################################
-    # 3.6) PUPPET REGENCY TRACKING
-    # Track years under puppet regency (used for decay calculation later)
+    # 3.6) PUPPET REGENCY TRACKING & STABILITY BONUS
+    # Tracks how long a puppet_regency has been active and manages the
+    # puppet stability bonus (riseandfall_rs_puppet_stability_bonus, 0..50).
+    # Starts at 50 on first year of puppet_regency; drifts yearly based on
+    # the puppet master's key stats (diplomacy/intrigue/stewardship) vs world averages.
     if = { limit = { NOT = { has_variable = riseandfall_puppet_regency_years } } set_variable = { name = riseandfall_puppet_regency_years value = 0 } }
     if = { limit = { has_diarchy_type = puppet_regency } change_variable = { name = riseandfall_puppet_regency_years add = 1 } }
     else = { if = { limit = { var:riseandfall_puppet_regency_years > 0 } change_variable = { name = riseandfall_puppet_regency_years add = -1 } } }
@@ -500,9 +504,386 @@ riseandfall_calculate_realm_stability_se = {
     # Initialize puppet regency multiplier for tooltip (no penalty applied here)
     set_variable = { name = riseandfall_realm_stability_puppet_regency_multiplier value = 100 }
 
-    # Ensure tooltip years variable exists for localization display
-    if = { limit = { has_variable = riseandfall_puppet_regency_years } set_variable = { name = riseandfall_realm_stability_puppet_regency_years_tooltip value = var:riseandfall_puppet_regency_years } }
-    else = { set_variable = { name = riseandfall_realm_stability_puppet_regency_years_tooltip value = 0 } }
+    # Initialize puppet stability bonus based on the starting puppet master's stats
+    # Only set once per regency lifecycle — if the variable already exists we keep it
+    if = {
+        limit = {
+            has_diarchy_type = puppet_regency
+            has_active_diarchy = yes
+            exists = scope:diarch
+            NOT = { has_variable = riseandfall_rs_puppet_stability_bonus }
+        }
+        # Compute the puppet master's average across all five stats
+        set_variable = { name = tmp_pm_start_sum value = scope:diarch.diplomacy }
+        change_variable = { name = tmp_pm_start_sum add = scope:diarch.martial }
+        change_variable = { name = tmp_pm_start_sum add = scope:diarch.stewardship }
+        change_variable = { name = tmp_pm_start_sum add = scope:diarch.intrigue }
+        change_variable = { name = tmp_pm_start_sum add = scope:diarch.learning }
+        change_variable = { name = tmp_pm_start_sum divide = 5 }
+
+        # Compute delta vs precomputed world five-stat average (riseandfall_avg_total)
+        set_variable = { name = tmp_pm_start_baseline value = global_var:riseandfall_avg_total }
+        change_variable = { name = tmp_pm_start_baseline multiply = -1 }
+        change_variable = { name = tmp_pm_start_sum add = var:tmp_pm_start_baseline }
+        set_variable = { name = tmp_pm_start_delta value = var:tmp_pm_start_sum }
+
+        # Map delta to 0..50 starting bonus (better stats -> larger start)
+        if = { limit = { var:tmp_pm_start_delta >= 15 } set_variable = { name = tmp_pm_start_bonus value = 50 } }
+        else_if = { limit = { var:tmp_pm_start_delta >= 5 } set_variable = { name = tmp_pm_start_bonus value = 40 } }
+        else_if = { limit = { var:tmp_pm_start_delta >= 0 } set_variable = { name = tmp_pm_start_bonus value = 30 } }
+        else_if = { limit = { var:tmp_pm_start_delta >= -5 } set_variable = { name = tmp_pm_start_bonus value = 15 } }
+        else_if = { limit = { var:tmp_pm_start_delta >= -15 } set_variable = { name = tmp_pm_start_bonus value = 5 } }
+        else = { set_variable = { name = tmp_pm_start_bonus value = 0 } }
+
+        set_variable = { name = riseandfall_rs_puppet_stability_bonus value = var:tmp_pm_start_bonus }
+        clamp_variable = { name = riseandfall_rs_puppet_stability_bonus min = 0 max = 50 }
+
+        remove_variable = tmp_pm_start_sum
+        remove_variable = tmp_pm_start_baseline
+        remove_variable = tmp_pm_start_delta
+        remove_variable = tmp_pm_start_bonus
+    }
+
+    # Yearly drift: compute puppet master's relevant stats vs world averages
+    if = {
+        limit = {
+            has_diarchy_type = puppet_regency
+            has_active_diarchy = yes
+            exists = scope:diarch
+            has_variable = riseandfall_rs_puppet_stability_bonus
+        }
+        # Sum all five stats for the puppet master and compute the average
+        set_variable = { name = tmp_pm_stat_sum value = scope:diarch.diplomacy }
+        change_variable = { name = tmp_pm_stat_sum add = scope:diarch.martial }
+        change_variable = { name = tmp_pm_stat_sum add = scope:diarch.stewardship }
+        change_variable = { name = tmp_pm_stat_sum add = scope:diarch.intrigue }
+        change_variable = { name = tmp_pm_stat_sum add = scope:diarch.learning }
+        # Convert sum -> average (integer division)
+        change_variable = { name = tmp_pm_stat_sum divide = 5 }
+
+        # Subtract precomputed world-average-of-five-stats (riseandfall_avg_total)
+        set_variable = { name = tmp_pm_avg_baseline value = global_var:riseandfall_avg_total }
+        change_variable = { name = tmp_pm_avg_baseline multiply = -1 }
+        change_variable = { name = tmp_pm_stat_sum add = var:tmp_pm_avg_baseline }
+        # tmp_pm_stat_sum now holds (puppet_master_avg - world_avg)
+        set_variable = { name = tmp_pm_stat_delta value = var:tmp_pm_stat_sum }
+
+        # Map combined delta to a yearly drift (same thresholds as before)
+        if = { limit = { var:tmp_pm_stat_delta >= 15 } set_variable = { name = tmp_pm_drift value = 5 } }
+        else_if = { limit = { var:tmp_pm_stat_delta >= 5 } set_variable = { name = tmp_pm_drift value = 3 } }
+        else_if = { limit = { var:tmp_pm_stat_delta >= 0 } set_variable = { name = tmp_pm_drift value = 1 } }
+        else_if = { limit = { var:tmp_pm_stat_delta >= -5 } set_variable = { name = tmp_pm_drift value = -2 } }
+        else_if = { limit = { var:tmp_pm_stat_delta >= -15 } set_variable = { name = tmp_pm_drift value = -5 } }
+        else = { set_variable = { name = tmp_pm_drift value = -10 } }
+
+        change_variable = { name = riseandfall_rs_puppet_stability_bonus add = var:tmp_pm_drift }
+        clamp_variable = { name = riseandfall_rs_puppet_stability_bonus min = 0 max = 50 }
+
+        remove_variable = tmp_pm_stat_sum
+        remove_variable = tmp_pm_avg_baseline
+        remove_variable = tmp_pm_stat_delta
+        remove_variable = tmp_pm_drift
+    }
+    else_if = {
+        # Puppet regency ended — remove the bonus so it is no longer added to the target
+        limit = {
+            NOT = { has_diarchy_type = puppet_regency }
+            has_variable = riseandfall_rs_puppet_stability_bonus
+        }
+        remove_variable = riseandfall_rs_puppet_stability_bonus
+    }
+
+    ########################################
+    # 3.7) DYNAMIC REALM FACTORS
+    # Story-mode pressure now feeds stability directly instead of producing fracture vars.
+    set_variable = { name = riseandfall_rs_realm_size_component value = 0 }
+    set_variable = { name = riseandfall_rs_culture_faith_component value = 0 }
+    set_variable = { name = riseandfall_rs_partition_component value = 0 }
+    set_variable = { name = riseandfall_rs_succession_component value = 0 }
+    set_variable = { name = riseandfall_rs_strong_vassal_count value = 0 }
+    set_variable = { name = riseandfall_rs_foreign_culture_county_pct value = 0 }
+    set_variable = { name = riseandfall_rs_foreign_faith_county_pct value = 0 }
+    set_variable = { name = tmp_story_strong_vassal_component_target value = 0 }
+
+    if = {
+        limit = {
+            has_game_rule = riseandfall_dynamic_story_mode_enabled
+            is_independent_ruler = yes
+            highest_held_title_tier >= tier_duchy
+        }
+
+        # Realm size now directly shifts stability instead of only increasing collapse pressure.
+        set_variable = { name = tmp_story_world_total value = global_var:riseandfall_world_total }
+        if = { limit = { var:tmp_story_world_total < 1 } set_variable = { name = tmp_story_world_total value = 1 } }
+
+        # Continuous proportional scaling: lose 1 stability for every 1% of the world controlled.
+        # This keeps the penalty fully dynamic instead of using tiered thresholds.
+        # e.g. 7% -> -7, 12% -> -12, 50% -> -50
+        set_variable = { name = tmp_rs_realm_pct value = realm_size }
+        change_variable = { name = tmp_rs_realm_pct multiply = 100 }
+        change_variable = { name = tmp_rs_realm_pct divide = var:tmp_story_world_total }
+        round_variable = { name = tmp_rs_realm_pct nearest = 1 }
+        set_variable = { name = riseandfall_rs_realm_size_component value = var:tmp_rs_realm_pct }
+        change_variable = { name = riseandfall_rs_realm_size_component multiply = -1 }
+        clamp_variable = { name = riseandfall_rs_realm_size_component min = -15 max = 0 }
+
+        # Strong-vassal pressure is now a direct stability component from +10 to -30.
+        # Allied vassals should bolster the liege's effective military strength and
+        # not be counted as hostile strong vassals. Implement a two-pass approach:
+        # 1) Aggregate allied vassal strength into an effective liege strength.
+        # 2) Compute the threshold from the effective strength and count only
+        #    non-allied vassals that exceed it.
+        set_variable = { name = tmp_story_effective_liege_strength value = max_military_strength }
+        set_variable = { name = tmp_story_strong_vassals value = 0 }
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                primary_title.tier >= tier_county
+            }
+            save_scope_as = tmp_current_vassal
+            if = {
+                limit = {
+                    is_allied_to = scope:ruler
+                }
+                # allied vassals add their strength to the liege's effective strength
+                scope:ruler = { change_variable = { name = tmp_story_effective_liege_strength add = scope:tmp_current_vassal.max_military_strength } }
+            }
+        }
+
+        # Threshold is a fraction of the effective liege strength (including allied vassals)
+        set_variable = { name = tmp_story_strong_vassal_threshold value = var:tmp_story_effective_liege_strength }
+        change_variable = { name = tmp_story_strong_vassal_threshold multiply = 0.35 }
+
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                primary_title.tier >= tier_county
+            }
+            if = {
+                limit = {
+                    max_military_strength >= scope:ruler.var:tmp_story_strong_vassal_threshold
+                    NOT = { is_allied_to = scope:ruler }
+                }
+                scope:ruler = { change_variable = { name = tmp_story_strong_vassals add = 1 } }
+            }
+        }
+
+        remove_variable = tmp_story_effective_liege_strength
+        remove_variable = tmp_story_strong_vassal_threshold
+
+        set_variable = { name = riseandfall_rs_strong_vassal_count value = var:tmp_story_strong_vassals }
+        if = {
+            limit = { var:tmp_story_strong_vassals = 0 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = 10 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 1 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = 0 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 2 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -10 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 3 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -20 }
+        }
+        else = {
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -30 }
+        }
+
+        if = {
+            limit = { has_realm_law_flag = partition_succession_law }
+            # Partition law provides short-term stability: children have guaranteed shares so they don't
+            # war with the ruler during their lifetime. The realm fragments automatically on succession,
+            # so no additional penalty is needed here — the fragmentation is the consequence.
+            set_variable = { name = riseandfall_rs_partition_component value = 10 }
+        }
+
+        remove_variable = tmp_story_world_total
+        remove_variable = tmp_rs_realm_pct
+        remove_variable = tmp_story_strong_vassal_threshold
+        remove_variable = tmp_story_strong_vassals
+    }
+
+    # Culture/faith county calculation: NOT gated on duchy tier.
+    # Any independent ruler holding foreign-culture/faith territory should feel the penalty,
+    # including small county-tier independent rulers who were previously excluded.
+    if = {
+        limit = {
+            has_game_rule = riseandfall_dynamic_story_mode_enabled
+            is_independent_ruler = yes
+        }
+        set_variable = { name = tmp_story_realm_counties value = 0 }
+        set_variable = { name = tmp_story_foreign_culture_counties value = 0 }
+        set_variable = { name = tmp_story_foreign_faith_counties value = 0 }
+        set_variable = { name = tmp_story_foreign_culture_county_pct value = 0 }
+        set_variable = { name = tmp_story_foreign_faith_county_pct value = 0 }
+        set_variable = { name = tmp_story_nonapproved_pct value = 0 }
+        every_realm_county = {
+            save_scope_as = story_mode_county
+            scope:ruler = { change_variable = { name = tmp_story_realm_counties add = 1 } }
+
+            if = {
+                limit = { culture = scope:ruler.culture }
+            }
+            else_if = {
+                limit = {
+                    culture = {
+                        cultural_acceptance = {
+                            target = scope:ruler.culture
+                            value >= 70
+                        }
+                    }
+                }
+            }
+            else_if = {
+                limit = {
+                    exists = holder
+                    holder = { culture = scope:story_mode_county.culture }
+                }
+            }
+            else = {
+                scope:ruler = { change_variable = { name = tmp_story_foreign_culture_counties add = 1 } }
+            }
+
+            if = {
+                limit = { faith = scope:ruler.faith }
+            }
+            else_if = {
+                limit = {
+                    faith = {
+                        faith_hostility_level = {
+                            target = scope:ruler.faith
+                            value <= faith_astray_level
+                        }
+                    }
+                }
+            }
+            else_if = {
+                limit = {
+                    exists = holder
+                    holder = { faith = scope:story_mode_county.faith }
+                }
+            }
+            else = {
+                scope:ruler = { change_variable = { name = tmp_story_foreign_faith_counties add = 1 } }
+            }
+
+            clear_saved_scope = story_mode_county
+        }
+
+        if = {
+            limit = { var:tmp_story_realm_counties > 0 }
+            set_variable = { name = tmp_story_foreign_culture_county_pct value = var:tmp_story_foreign_culture_counties }
+            change_variable = { name = tmp_story_foreign_culture_county_pct multiply = 100 }
+            change_variable = { name = tmp_story_foreign_culture_county_pct divide = var:tmp_story_realm_counties }
+            round_variable = { name = tmp_story_foreign_culture_county_pct nearest = 1 }
+
+            set_variable = { name = tmp_story_foreign_faith_county_pct value = var:tmp_story_foreign_faith_counties }
+            change_variable = { name = tmp_story_foreign_faith_county_pct multiply = 100 }
+            change_variable = { name = tmp_story_foreign_faith_county_pct divide = var:tmp_story_realm_counties }
+            round_variable = { name = tmp_story_foreign_faith_county_pct nearest = 1 }
+
+            set_variable = { name = riseandfall_rs_foreign_culture_county_pct value = var:tmp_story_foreign_culture_county_pct }
+            set_variable = { name = riseandfall_rs_foreign_faith_county_pct value = var:tmp_story_foreign_faith_county_pct }
+
+            set_variable = { name = tmp_story_nonapproved_pct value = var:tmp_story_foreign_culture_county_pct }
+            change_variable = { name = tmp_story_nonapproved_pct add = var:tmp_story_foreign_faith_county_pct }
+            change_variable = { name = tmp_story_nonapproved_pct divide = 2 }
+
+            # Continuous homogeneity/diversity component: map 0-100% foreign -> +10..-30
+            # This preserves the same endpoints as the old tiered mapping but scales smoothly.
+            set_variable = { name = riseandfall_rs_culture_faith_component value = var:tmp_story_nonapproved_pct }
+            change_variable = { name = riseandfall_rs_culture_faith_component multiply = -4 }
+            change_variable = { name = riseandfall_rs_culture_faith_component divide = 10 }
+            change_variable = { name = riseandfall_rs_culture_faith_component add = 10 }
+            round_variable = { name = riseandfall_rs_culture_faith_component nearest = 1 }
+            clamp_variable = { name = riseandfall_rs_culture_faith_component min = -30 max = 10 }
+        }
+
+        remove_variable = tmp_story_realm_counties
+        remove_variable = tmp_story_foreign_culture_counties
+        remove_variable = tmp_story_foreign_faith_counties
+        remove_variable = tmp_story_foreign_culture_county_pct
+        remove_variable = tmp_story_foreign_faith_county_pct
+        remove_variable = tmp_story_nonapproved_pct
+    }
+
+    # Strong-vassal balance now drifts toward the actual realm state over five yearly pulses
+    # instead of snapping immediately after a single battle or temporary war swing.
+    if = {
+        limit = { NOT = { has_variable = riseandfall_rs_strong_vassal_component } }
+        set_variable = { name = riseandfall_rs_strong_vassal_component value = var:tmp_story_strong_vassal_component_target }
+    }
+    else = {
+        set_variable = { name = tmp_rs_strong_vassal_delta value = var:tmp_story_strong_vassal_component_target }
+        set_variable = { name = tmp_rs_strong_vassal_current value = var:riseandfall_rs_strong_vassal_component }
+        change_variable = { name = tmp_rs_strong_vassal_current multiply = -1 }
+        change_variable = { name = tmp_rs_strong_vassal_delta add = var:tmp_rs_strong_vassal_current }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta >= 0 }
+            set_variable = { name = tmp_rs_strong_vassal_delta_abs value = var:tmp_rs_strong_vassal_delta }
+        }
+        else = {
+            set_variable = { name = tmp_rs_strong_vassal_delta_abs value = var:tmp_rs_strong_vassal_delta }
+            change_variable = { name = tmp_rs_strong_vassal_delta_abs multiply = -1 }
+        }
+
+        set_variable = { name = tmp_rs_strong_vassal_step_numer value = var:tmp_rs_strong_vassal_delta_abs }
+        change_variable = { name = tmp_rs_strong_vassal_step_numer add = 4 }
+        set_variable = { name = tmp_rs_strong_vassal_step value = var:tmp_rs_strong_vassal_step_numer }
+        change_variable = { name = tmp_rs_strong_vassal_step divide = 5 }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta_abs = 0 }
+            set_variable = { name = tmp_rs_strong_vassal_step value = 0 }
+        }
+        else = {
+            if = { limit = { var:tmp_rs_strong_vassal_step < 1 } set_variable = { name = tmp_rs_strong_vassal_step value = 1 } }
+        }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta > 0 }
+            change_variable = { name = riseandfall_rs_strong_vassal_component add = var:tmp_rs_strong_vassal_step }
+        }
+        else_if = {
+            limit = { var:tmp_rs_strong_vassal_delta < 0 }
+            set_variable = { name = tmp_rs_strong_vassal_step_neg value = var:tmp_rs_strong_vassal_step }
+            change_variable = { name = tmp_rs_strong_vassal_step_neg multiply = -1 }
+            change_variable = { name = riseandfall_rs_strong_vassal_component add = var:tmp_rs_strong_vassal_step_neg }
+        }
+    }
+
+    clamp_variable = { name = riseandfall_rs_strong_vassal_component min = -30 max = 10 }
+
+    if = {
+        limit = {
+            has_game_rule = riseandfall_dynamic_story_mode_enabled
+            has_variable = riseandfall_rs_succession_shock
+        }
+        set_variable = { name = riseandfall_rs_succession_component value = var:riseandfall_rs_succession_shock }
+        change_variable = { name = riseandfall_rs_succession_component multiply = -1 }
+        clamp_variable = { name = riseandfall_rs_succession_component min = -50 max = 50 }
+
+        # Decay the stored shock toward zero by 5% yearly, with a minimum step of 1.
+        set_variable = { name = tmp_rs_succession_decay value = var:riseandfall_rs_succession_shock }
+        if = { limit = { var:tmp_rs_succession_decay < 0 } change_variable = { name = tmp_rs_succession_decay multiply = -1 } }
+        change_variable = { name = tmp_rs_succession_decay add = 19 }
+        change_variable = { name = tmp_rs_succession_decay divide = 20 }
+        if = { limit = { var:tmp_rs_succession_decay < 1 } set_variable = { name = tmp_rs_succession_decay value = 1 } }
+        set_variable = { name = tmp_rs_succession_decay_neg value = var:tmp_rs_succession_decay }
+        if = { limit = { var:riseandfall_rs_succession_shock > 0 } change_variable = { name = tmp_rs_succession_decay_neg multiply = -1 } }
+        change_variable = { name = riseandfall_rs_succession_shock add = var:tmp_rs_succession_decay_neg }
+        if = {
+            limit = { var:riseandfall_rs_succession_shock = 0 }
+            remove_variable = riseandfall_rs_succession_shock
+        }
+        else = {
+            clamp_variable = { name = riseandfall_rs_succession_shock min = -50 max = 50 }
+        }
+    }
 
     ########################################
     # 4) Sum components into final 0..100 TARGET score (don't overwrite the persistent current score yet)
@@ -524,35 +905,11 @@ riseandfall_calculate_realm_stability_se = {
     # (It no longer contributes directly; stability is now dominated by stats and vassals, with
     # legitimacy as a multiplier applied below.)
 
-
-    # Puppet regency multiplier is now applied during per-stat calculation (section 1).
-    # Keep the tooltip variable intact but do not apply an additional multiplier here.
-
-    # Now apply the legitimacy multiplier to the current target score (percent math).
-    if = { limit = { has_variable = riseandfall_rs_legitimacy_multiplier }
-        change_variable = { name = tmp_target_score multiply = var:riseandfall_rs_legitimacy_multiplier }
-        change_variable = { name = tmp_target_score divide = 100 }
-    }
-
-    # Apply puppet regency linear multiplier to the TARGET score: 2% per year (linear)
-    # e.g., 5 years -> 100 - 2*5 = 90% (tmp_target_score * 0.90)
+    # Puppet stability bonus: +0..+50 when a puppet_regency is active.
+    # Good puppet master stats drift it toward 50; bad stats or using interactions erode it.
     if = {
-        limit = { has_variable = riseandfall_puppet_regency_years }
-        set_variable = { name = tmp_pr_years value = var:riseandfall_puppet_regency_years }
-        # tmp_pr_years = -2 * years (we'll add this to 100)
-        change_variable = { name = tmp_pr_years multiply = -2 }
-        set_variable = { name = tmp_pr_mult_pct value = 100 }
-        change_variable = { name = tmp_pr_mult_pct add = var:tmp_pr_years }
-        # Prevent negative multiplier
-        clamp_variable = { name = tmp_pr_mult_pct min = 0 max = 100 }
-    # Expose for tooltip (percent) — store the computed percent in the persistent var
-    set_variable = { name = riseandfall_realm_stability_puppet_regency_multiplier value = var:tmp_pr_mult_pct }
-    # Apply percent multiplier to target score using the persistent tooltip variable
-    change_variable = { name = tmp_target_score multiply = var:riseandfall_realm_stability_puppet_regency_multiplier }
-    change_variable = { name = tmp_target_score divide = 100 }
-    }
-    else = {
-        if = { limit = { NOT = { has_variable = riseandfall_realm_stability_puppet_regency_multiplier } } set_variable = { name = riseandfall_realm_stability_puppet_regency_multiplier value = 100 } }
+        limit = { has_variable = riseandfall_rs_puppet_stability_bonus }
+        change_variable = { name = tmp_target_score add = var:riseandfall_rs_puppet_stability_bonus }
     }
 
     # Civil war adjustment applied to the TARGET score (so smoothing moves current toward

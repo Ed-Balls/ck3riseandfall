@@ -1,4 +1,4 @@
-﻿##########################
+##########################
 # Rise and Fall - Low Stability Events Scripted Effects
 # Contains scripted effects related to low stability events
 # Sets up the challenger selection, kills courtiers, creates adventurer title, and sets cooldowns
@@ -433,6 +433,50 @@ riseandfall_palace_coup_setup = {
 	}
 }
 
+# Rise and Fall - Palace Coup Submit
+# The ruler yields and remains on the throne only as a puppet
+
+riseandfall_palace_coup_become_puppet = {
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = { try_start_diarchy = puppet_regency }
+    }
+
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            root = { has_active_diarchy = yes }
+        }
+        root = {
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+            set_variable = { name = puppet_master_cooldown value = yes days = 365 }
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+
+    root = { trigger_event = { id = palace_coup.1004 } }
+
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { trigger_event = { id = palace_coup.2002 } }
+    }
+}
+
+##########################
+# Rise and Fall - Palace Coup Rebellion
+# The challenger seizes the throne and the deposed ruler immediately raises a claim war
+
+riseandfall_palace_coup_start_rebellion = {
+    riseandfall_palace_coup_root_flees_success = yes
+}
+
 # Rise and Fall - Palace Coup Root Wins Prowess Duel
 # Kills the challenger when root wins the prowess duel
 
@@ -563,23 +607,98 @@ riseandfall_palace_coup_challenger_wins_prowess_duel = {
 					}
 				}
 
-				set_diarch = scope:challenger
-				set_diarchy_type = puppet_regency
-				set_diarchy_swing = 90
-				set_variable = { name = puppet_master_cooldown value = yes days = 365 }
-			}
-		}
-	# Trigger notification event for the defeated ruler
-	root = { trigger_event = { id = palace_coup.1004 } }
-	
-	# Notify challenger of victory
-	if = {
-		limit = { exists = scope:challenger }
-		scope:challenger = { trigger_event = { id = palace_coup.2002 } }
-	}
-	
-	# Clean up: ensure the temporary palace coup camp title is destroyed
-	hidden_effect = { riseandfall_palace_coup_cleanup_camp = yes }
+    scope:event_root = {
+        every_courtier_or_guest = {
+            limit = {
+                is_alive = yes
+                this != root
+                this != scope:challenger
+            }
+
+            # Assign employer to challenger
+            if = {
+                limit = { employer != scope:challenger }
+                if = { limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } } set_employer = scope:challenger }
+            }
+            random = {
+                chance = 100
+
+                if = {
+                    limit = {
+                        not = { exists = involved_activity }
+                    }
+
+                    set_location_to_default = yes
+                }
+                else_if = {
+                    limit = { is_courtier = yes }
+                    return_to_court = yes
+                }
+                else = {
+                    set_location_to_default = yes
+                }
+            }
+        }
+    }
+
+    # Transfer all of root's gold to challenger (root will die) then trigger death event for root
+
+    # Save root gold amount then give it to the challenger (use saved event_root scope)
+
+    scope:event_root = {
+        if = { limit = { gold > 1 } set_variable = { name = duel_transfer_gold value = gold } }
+    }
+    # Add to challenger from the saved event_root variable
+    scope:challenger = {
+        if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } scope:challenger = { is_alive = yes } } add_short_term_gold = scope:event_root.var:duel_transfer_gold }
+    }
+    # Remove gold from event_root and cleanup variable
+    scope:event_root = {
+        if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold }
+        remove_variable = duel_transfer_gold
+    }
+    # Notify the defeated ruler and attempt to make them a puppet (no death)
+    # Attempt to start puppet regency on the defeated ruler and assign challenger as diarch
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = { try_start_diarchy = puppet_regency }
+    }
+    if = {
+        limit = { root = { has_active_diarchy = yes } }
+        root = {
+            # Make sure the (new) diarch is not employed by the challenger; as puppet master they must be in root's court.
+            # Only proceed if the challenger is a valid courtier-type character (unrulered) after camp cleanup.
+            if = {
+                limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } }
+                scope:challenger = {
+                    # Ensure challenger is employed by the defeated ruler before becoming diarch
+                    if = { limit = { NOT = { employer = root } } set_employer = root }
+                    every_courtier = {
+                        limit = { is_alive = yes NOT = { employer = root } }
+                        set_employer = root
+                    }
+                }
+
+                set_diarch = scope:challenger
+                set_diarchy_type = puppet_regency
+                set_diarchy_swing = 90
+                set_variable = { name = puppet_master_cooldown value = yes days = 365 }
+                riseandfall_sync_puppet_master_court_position = yes
+            }
+        }
+    }
+    # Trigger notification event for the defeated ruler
+    root = { trigger_event = { id = palace_coup.1004 } }
+
+    # Notify challenger of victory
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { trigger_event = { id = palace_coup.2002 } }
+    }
 }
 }
 
@@ -786,57 +905,491 @@ riseandfall_palace_coup_root_flees_failure = {
 	scope:challenger = { if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } add_short_term_gold = scope:event_root.var:duel_transfer_gold } }
 	scope:event_root = { if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold } remove_variable = duel_transfer_gold }
 
-	# Destroy temporary camp title (if present) early so challenger is not treated as a ruler.
-	if = {
-		limit = {
-			exists = scope:palace_coup_challenger_camp_title
-			exists = scope:challenger
-			scope:challenger = { has_title = scope:palace_coup_challenger_camp_title }
-		}
-		scope:challenger = { destroy_title = scope:palace_coup_challenger_camp_title }
-	}
+    # Transfer ALL same-rank (and subordinate) titles to the challenger.
+    # For empire/hegemony rulers: transfer all kingdom titles and below.
+    # For kingdom rulers: transfer all kingdom titles the ruler personally holds.
+    # All direct vassals then change liege to the challenger.
+    # riseandfall_realm_split_se handles the geographical split afterwards.
+    scope:original_ruler = {
+        every_held_title = {
+            limit = {
+                NOT = { this = scope:original_primary }
+                NOT = { is_head_of_faith = yes }
+                NOT = { is_noble_family_title = yes }
+                OR = {
+                    tier = tier_kingdom
+                    tier = tier_duchy
+                    tier = tier_county
+                }
+            }
+            change_title_holder = {
+                holder = scope:palace_coup_challenger
+                change = scope:palace_coup_split_change
+                take_baronies = yes
+            }
+        }
+        every_vassal = {
+            limit = { is_landed = yes }
+            change_liege = {
+                liege = scope:palace_coup_challenger
+                change = scope:palace_coup_split_change
+            }
+        }
+    }
 
-	# Do NOT transfer titles or vassals — instead establish puppet regency on the root
-	if = {
-		limit = {
-			exists = scope:challenger
-			scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
-			NOT = { root = { has_active_diarchy = yes } }
-		}
-		root = { try_start_diarchy = puppet_regency }
-	}
-	if = {
-		limit = {
-			exists = scope:challenger
-			scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
-			root = { has_active_diarchy = yes }
-		}
-		root = {
-			# Ensure challenger and their courtiers are employed by the defeated ruler (root)
-			scope:challenger = {
-				# Only set employer if challenger is not a ruler
-				if = { limit = { NOT = { employer = root } } set_employer = root }
-				every_courtier = {
-					limit = { is_alive = yes NOT = { employer = root } }
-					set_employer = root
-				}
-			}
+    resolve_title_and_vassal_change = scope:palace_coup_split_change
 
-			set_diarch = scope:challenger
-			set_diarchy_type = puppet_regency
-			set_diarchy_swing = 90
-			set_variable = { name = puppet_master_cooldown value = yes days = 365 }
-		}
-	}
+    # If the old ruler personally loses all land, take one county from the
+    # challenger's new realm so they can anchor a breakaway state.
+    # Search the CHALLENGER's vassals first. Fall back to the challenger's
+    # directly held counties for highly centralised realms (e.g. Byzantine
+    # Empire) where few or no sub-vassal lords exist after the transfer.
+    if = {
+        limit = { scope:original_ruler = { is_landed = no } }
+        # Search challenger's sub-vassals: prefer duchy lords outside the core duchy
+        scope:palace_coup_challenger = {
+            ordered_vassal = {
+                limit = {
+                    is_landed = yes
+                    primary_title.tier >= tier_duchy
+                    NOT = { capital_county.duchy = scope:palace_coup_core_duchy }
+                }
+                order_by = current_military_strength
+                max = 1
+                save_scope_as = palace_coup_land_donor
+            }
+            if = {
+                limit = { NOT = { exists = scope:palace_coup_land_donor } }
+                ordered_vassal = {
+                    limit = {
+                        is_landed = yes
+                        NOT = { capital_county.duchy = scope:palace_coup_core_duchy }
+                    }
+                    order_by = current_military_strength
+                    max = 1
+                    save_scope_as = palace_coup_land_donor
+                }
+            }
+            # Widest vassal fallback — any landed vassal (including core duchy)
+            if = {
+                limit = { NOT = { exists = scope:palace_coup_land_donor } }
+                ordered_vassal = {
+                    limit = { is_landed = yes }
+                    order_by = current_military_strength
+                    max = 1
+                    save_scope_as = palace_coup_land_donor
+                }
+            }
+        }
 
-	# Notify root of their new status (failed escape specific notification)
-	root = { trigger_event = { id = palace_coup.1005 } }
+        # Deep fallback for centralised realms (Byzantine-style) where the challenger
+        # holds most land personally with no sub-vassal to donate.
+        # Pick one of the challenger's directly held counties outside the core duchy.
+        if = {
+            limit = { NOT = { exists = scope:palace_coup_land_donor } }
+            scope:palace_coup_challenger = {
+                random_held_title = {
+                    limit = {
+                        tier = tier_county
+                        NOT = { this = scope:palace_coup_old_capital_county }
+                        NOT = { de_jure_liege = scope:palace_coup_core_duchy }
+                    }
+                    save_scope_as = palace_coup_direct_donor_title
+                }
+                if = {
+                    limit = { NOT = { exists = scope:palace_coup_direct_donor_title } }
+                    random_held_title = {
+                        limit = {
+                            tier = tier_county
+                            NOT = { this = scope:palace_coup_old_capital_county }
+                        }
+                        save_scope_as = palace_coup_direct_donor_title
+                    }
+                }
+            }
+        }
 
-	# Notify challenger of failed escape
-	scope:challenger = { trigger_event = { id = palace_coup.2004 } }
+        # Apply whichever donor path succeeded
+        if = {
+            limit = { exists = scope:palace_coup_land_donor }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_land_change
+                add_claim_on_loss = yes
+            }
+            scope:palace_coup_land_donor = {
+                capital_county = {
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_land_change
+                        take_baronies = yes
+                    }
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_land_change
+        }
+        else_if = {
+            limit = { exists = scope:palace_coup_direct_donor_title }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_land_change
+                add_claim_on_loss = yes
+            }
+            scope:palace_coup_direct_donor_title = {
+                change_title_holder = {
+                    holder = scope:original_ruler
+                    change = scope:palace_coup_land_change
+                    take_baronies = yes
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_land_change
+        }
+    }
 
-	# Clean up temporary palace coup camp title
-	hidden_effect = { riseandfall_palace_coup_cleanup_camp = yes }
+        # Make the fleeing ruler a direct vassal seed inside the challenger's new
+        # realm so the full inherited realm can fracture around them.
+        # NOTE: is_independent_ruler check intentionally omitted — duchy/county-tier rulers
+        # become independent after losing their primary title, and must still be seeded.
+        if = {
+            limit = {
+                scope:original_ruler = {
+                    is_landed = yes
+                    NOT = { liege = scope:palace_coup_challenger }
+                    # Tier check: challenger must hold a higher-tier title or CK3 will reject the vassalage
+                    primary_title.tier < scope:palace_coup_challenger.primary_title.tier
+                }
+            }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_direct_vassal_change
+                add_claim_on_loss = no
+            }
+            scope:original_ruler = {
+                change_liege = {
+                    liege = scope:palace_coup_challenger
+                    change = scope:palace_coup_direct_vassal_change
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_direct_vassal_change
+        }
+
+        if = {
+            limit = { scope:original_ruler = { is_landed = yes } }
+            scope:original_ruler = { add_character_flag = rf_forced_breakaway_seed }
+        }
+
+        if = {
+            limit = {
+                scope:palace_coup_challenger = {
+                    is_independent_ruler = yes
+                    any_vassal = {
+                        is_landed = yes
+                        primary_title.tier >= tier_county
+                    }
+                }
+                # Only call the full realm split on the challenger when the fleeing ruler 
+                # has successfully become their direct vassal, OR if the fleeing ruler 
+                # stayed independent (e.g. they kept a secondary kingdom title).
+                OR = {
+                    scope:original_ruler = { liege = scope:palace_coup_challenger }
+                    scope:original_ruler = { is_independent_ruler = yes }
+                }
+            }
+            scope:palace_coup_challenger = {
+                set_variable = { name = rf_realm_split_no_tributaries value = 1 }
+                riseandfall_realm_split_se = yes
+                remove_variable = rf_realm_split_no_tributaries
+            }
+        }
+        # Restore scope:original_ruler to root (riseandfall_realm_split_se overwrites it to the challenger)
+        scope:palace_coup_original_ruler = { save_scope_as = original_ruler }
+
+        if = {
+            limit = { scope:original_ruler = { has_character_flag = rf_forced_breakaway_seed } }
+            scope:original_ruler = { remove_character_flag = rf_forced_breakaway_seed }
+        }
+
+        # Safety fallback for very small or malformed realms where the full split did
+        # not fire but the old ruler should still form an independent rival state.
+        if = {
+            limit = {
+                scope:original_ruler = {
+                    is_landed = yes
+                    is_independent_ruler = no
+                }
+            }
+            create_title_and_vassal_change = {
+                type = independency
+                save_scope_as = palace_coup_indep_change
+                add_claim_on_loss = yes
+            }
+            scope:original_ruler = {
+                becomes_independent = {
+                    change = scope:palace_coup_indep_change
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_indep_change
+        }
+
+        # Create a same-rank rival title for the fleeing ruler when they no longer
+        # hold one after the split.
+        if = {
+            limit = {
+                scope:original_primary = {
+                    OR = {
+                        tier = tier_empire
+                        tier = tier_hegemony
+                    }
+                }
+                scope:original_ruler = { exists = capital_county }
+                scope:original_ruler = { highest_held_title_tier < tier_empire }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_province = { save_scope_as = rf_base_province }
+                create_dynamic_title = {
+                    tier = empire
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    if = {
+                        limit = { scope:original_ruler = { has_dynasty = yes } }
+                        set_coa = scope:original_ruler.dynasty
+                    }
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+        else_if = {
+            limit = {
+                scope:original_primary = { tier = tier_kingdom }
+                scope:original_ruler = { exists = capital_county }
+                scope:original_ruler = { highest_held_title_tier < tier_kingdom }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_province = { save_scope_as = rf_base_province }
+                create_dynamic_title = {
+                    tier = kingdom
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    if = {
+                        limit = { scope:original_ruler = { has_dynasty = yes } }
+                        set_coa = scope:original_ruler.dynasty
+                    }
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+        else_if = {
+            limit = {
+                scope:original_ruler = { exists = capital_county }
+                scope:original_ruler = { highest_held_title_tier < tier_duchy }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_province = { save_scope_as = rf_base_province }
+                create_dynamic_title = {
+                    tier = duchy
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    if = {
+                        limit = { scope:original_ruler = { has_dynasty = yes } }
+                        set_coa = scope:original_ruler.dynasty
+                    }
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+
+        if = {
+            limit = { NOT = { exists = scope:palace_coup_root_successor_title } }
+            scope:original_ruler = {
+                if = {
+                    limit = { exists = primary_title }
+                    primary_title = { save_scope_as = palace_coup_root_successor_title }
+                }
+            }
+        }
+
+        # Give root strong claims on all titles lost to the challenger
+        every_in_list = {
+            list = lost_titles
+            root = { make_claim_strong = prev }
+        }
+
+        # Mark both successor states so the later split mechanics still recognize
+        # them as rival heirs of the same origin realm.
+        scope:original_ruler = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary }
+            add_character_flag = rf_successor_state_ruler
+            set_variable = { name = tmp_successor_realm_size value = realm_size }
+        }
+        scope:palace_coup_challenger = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary }
+            add_character_flag = rf_successor_state_ruler
+            set_variable = { name = tmp_successor_realm_size value = realm_size }
+        }
+
+        scope:original_primary = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary years = 30 }
+            set_variable = { name = rf_is_successor_split_title value = 1 years = 30 }
+            set_variable = { name = rf_is_permanent_successor_split value = 1 }
+            if = {
+                limit = { NOT = { has_variable = rf_successor_permanent_realm_size } }
+                set_variable = { name = rf_successor_permanent_realm_size value = scope:palace_coup_challenger.var:tmp_successor_realm_size }
+            }
+        }
+        if = {
+            limit = { exists = scope:palace_coup_root_successor_title }
+            scope:palace_coup_root_successor_title = {
+                set_variable = { name = rf_successor_origin_title value = scope:original_primary years = 30 }
+                set_variable = { name = rf_is_successor_split_title value = 1 years = 30 }
+                set_variable = { name = rf_is_permanent_successor_split value = 1 }
+                if = {
+                    limit = { NOT = { has_variable = rf_successor_permanent_realm_size } }
+                    set_variable = { name = rf_successor_permanent_realm_size value = scope:original_ruler.var:tmp_successor_realm_size }
+                }
+            }
+        }
+        scope:original_ruler = { remove_variable = tmp_successor_realm_size }
+        scope:palace_coup_challenger = { remove_variable = tmp_successor_realm_size }
+
+        # Retreating ruler receives a strong claim on the original primary title
+        scope:original_ruler = { make_claim_strong = scope:original_primary }
+
+
+        # Trigger escape follow-up: call banners event for root
+        # Transfer 50% of root's gold to the challenger when root escapes
+
+        scope:event_root = {
+            if = {
+                limit = { gold > 1 }
+                # Save root gold amount then reduce to 50% for transfer
+                set_variable = { name = duel_transfer_gold value = gold }
+                change_variable = { name = duel_transfer_gold multiply = 0.5 }
+            }
+        }
+        # Add the 50% to the challenger and remove it from event_root
+
+        scope:challenger = {
+            if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } add_short_term_gold = scope:event_root.var:duel_transfer_gold }
+        }
+        scope:event_root = {
+            if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold }
+            remove_variable = duel_transfer_gold
+        }
+        # Trigger escape follow-up: call banners event for root
+        # Trigger the follow-up event for the deposed root to display the escape UI
+        root = { trigger_event = { id = palace_coup.1003 } }
+
+        scope:challenger = {
+            if = {
+                limit = {
+                    root = { has_legitimacy = yes }
+                    this = { has_legitimacy = yes }
+                    this = { is_ruler = yes }
+                }
+                add_legitimacy = -1200
+            }
+        }
+
+        # Make root and the challenger rivals of each other
+        root = {
+            if = {
+                limit = { can_set_relation_rival_trigger = { CHARACTER = scope:challenger } }
+                set_relation_rival = {
+                    target = scope:challenger
+                    reason = riseandfall_adventurer_became_rival
+                }
+            }
+        }
+
+        # Notify challenger of successful escape
+        scope:challenger = { trigger_event = { id = palace_coup.2003 } }
+
+        scope:challenger = {
+            if = {
+                limit = { can_set_relation_rival_trigger = { CHARACTER = root } }
+                set_relation_rival = {
+                    target = root
+                    reason = riseandfall_adventurer_became_rival
+                }
+            }
+        }
+
+        scope:event_root = {
+            every_courtier_or_guest = {
+                limit = {
+                    this != root
+                    this != scope:challenger
+                }
+
+                # Assign employer to challenger when possible (challenger is now a ruler after the split)
+                if = {
+                    limit = { employer != scope:challenger }
+                    if = { limit = { exists = scope:challenger scope:challenger = { is_alive = yes is_ruler = yes } } set_employer = scope:challenger }
+                }
+                random = {
+                    chance = 50
+
+                    if = {
+                        limit = {
+                            not = { exists = involved_activity }
+                        }
+
+                        set_location_to_default = yes
+                    }
+                    else = {
+                        return_to_court = yes
+                    }
+                }
+            }
+        }
 }
 
 ##########################
@@ -847,47 +1400,45 @@ riseandfall_palace_coup_challenger_calls_banners = {
 	scope:challenger = { trigger_event = { id = warlord.1001 } }
 }
 
-# Centralized cleanup for palace coup temporary camp title
-riseandfall_palace_coup_cleanup_camp = {
-	if = {
-		limit = {
-			scope:event_root = { is_alive = yes has_variable = challenger_camp_created }
-			exists = scope:palace_coup_challenger_camp_title
-			scope:challenger = { is_alive = yes has_title = scope:palace_coup_challenger_camp_title }
-		}
-		scope:challenger = { destroy_title = scope:palace_coup_challenger_camp_title }
-	}
-	else_if = {
-		limit = {
-			scope:event_root = { is_alive = yes has_variable = challenger_camp_created }
-			exists = scope:palace_coup_challenger_camp_title
-		}
-		root = { destroy_title = scope:palace_coup_challenger_camp_title }
-	}
-	# Remove marker variable from event_root
-	scope:event_root = { if = { limit = { is_alive = yes } remove_variable = challenger_camp_created } }
-	# Remove temporary variables from event_root
-	scope:event_root = { 
-		if = { limit = { is_alive = yes } 
-			if = { limit = { has_variable = tmp_best_challenger_score } remove_variable = tmp_best_challenger_score }
-			if = { limit = { has_variable = tmp_candidate } remove_variable = tmp_candidate }
-			if = { limit = { has_variable = riseandfall_total_prowess_chall } remove_variable = riseandfall_total_prowess_chall }
-			if = { limit = { has_variable = riseandfall_total_prowess_root } remove_variable = riseandfall_total_prowess_root }
-		}
-	}
-	# Remove temporary variables from root and challenger
-	root = { 
-		if = { limit = { is_alive = yes has_variable = riseandfall_total_prowess } remove_variable = riseandfall_total_prowess }
-		if = { limit = { is_alive = yes has_variable = riseandfall_total_prowess_root } remove_variable = riseandfall_total_prowess_root }
-		remove_variable = lost_titles
-	}
-	if = { limit = { exists = scope:challenger scope:challenger = { is_alive = yes } } 
-		scope:challenger = { 
-			if = { limit = { has_variable = riseandfall_total_prowess } remove_variable = riseandfall_total_prowess }
-			if = { limit = { has_variable = riseandfall_total_prowess_chall } remove_variable = riseandfall_total_prowess_chall }
-			if = { limit = { has_variable = candidate_total } remove_variable = candidate_total }
-		}
-	}
+    # Do NOT transfer titles or vassals — instead establish puppet regency on the root
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = { try_start_diarchy = puppet_regency }
+    }
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            root = { has_active_diarchy = yes }
+        }
+        root = {
+            # Ensure challenger and their courtiers are employed by the defeated ruler (root)
+            scope:challenger = {
+                # Only set employer if challenger is not a ruler
+                if = { limit = { NOT = { employer = root } } set_employer = root }
+                every_courtier = {
+                    limit = { is_alive = yes NOT = { employer = root } }
+                    set_employer = root
+                }
+            }
+
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+            set_variable = { name = puppet_master_cooldown value = yes days = 365 }
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+
+    # Notify root of their new status (failed escape specific notification)
+    root = { trigger_event = { id = palace_coup.1005 } }
+
+    # Notify challenger of failed escape
+    scope:challenger = { trigger_event = { id = palace_coup.2004 } }
 }
 
 
