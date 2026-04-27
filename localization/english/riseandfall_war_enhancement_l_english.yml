@@ -46,7 +46,7 @@
  riseandfall_war_enhancement.5.f:0 "Alert my family, we will escape together!"
  
  riseandfall_war_enhancement.6.t:0 "Selecting a Successor"
- riseandfall_war_enhancement.6.d:0 "The time has come for the vassals of the realm to form a council to choose a successor for the [ROOT.Char.GetLiege.GetPrimaryTitle.GetTierAsName] of [ROOT.Char.GetLiege.GetPrimaryTitle.GetBaseNameNoTier]."
+ riseandfall_war_enhancement.6.d:0 "The time has come for the vassals of the realm to form a council to choose a successor for the [riseandfall_liege_elective_title.GetNameNoTooltip]."
  riseandfall_war_enhancement.6.a:0 "Let us take the vote."
  riseandfall_war_enhancement.6.b:0 "The time is not yet right."
  riseandfall_war_enhancement.6.c:0 "By [ROOT.Char.GetFaith.HighGodName], I will crown myself!"

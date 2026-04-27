@@ -25,21 +25,6 @@ riseandfall_war_enhancement_war_won = {
 			scope:defender = {
 				save_scope_as = riseandfall_war_enhancement_prev_liege
 			}
-			# Save defender's primary title
-			if = {
-				limit = {
-					scope:war = {
-						OR = {
-							using_cb = liberty_faction_war
-							using_cb = refused_liege_demand_war
-							using_cb = claimant_faction_war
-						}
-					}
-				}
-				scope:defender.primary_title = {
-					save_scope_as = riseandfall_war_enhancement_liege_primary_title
-				}
-			}
 			
 			# Save attacker's liege
 			scope:attacker.liege = {
@@ -132,6 +117,80 @@ riseandfall_war_enhancement_war_won = {
 					save_scope_as = riseandfall_war_enhancement_attacker
 				}
 			}
+			
+			# Save defender's primary title
+			if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+							using_cb = claimant_faction_war
+						}
+					}
+					scope:riseandfall_war_enhancement_attacker.primary_title = {
+						target_is_de_jure_liege_or_above = scope:defender.primary_title
+					}
+				}
+				scope:defender.primary_title = {
+					save_scope_as = riseandfall_war_enhancement_liege_primary_title
+				}
+			}
+			else_if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+							using_cb = claimant_faction_war
+						}
+					}
+					scope:riseandfall_war_enhancement_attacker.primary_title = {
+						de_jure_liege.de_jure_liege = {
+							holder = scope:defender
+						}
+					}
+				}
+				scope:riseandfall_war_enhancement_attacker.primary_title.de_jure_liege.de_jure_liege = {
+					save_scope_as = riseandfall_war_enhancement_liege_primary_title
+				}
+			}
+			else_if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+							using_cb = claimant_faction_war
+						}
+					}
+					scope:riseandfall_war_enhancement_attacker.primary_title = {
+						de_jure_liege = {
+							holder = scope:defender
+						}
+					}
+				}
+				scope:riseandfall_war_enhancement_attacker.primary_title.de_jure_liege = {
+					save_scope_as = riseandfall_war_enhancement_liege_primary_title
+				}
+			}
+			
+			else_if = {
+				limit = {
+					scope:war = {
+						OR = {
+							using_cb = liberty_faction_war
+							using_cb = refused_liege_demand_war
+							using_cb = claimant_faction_war
+						}
+					}
+				}
+				scope:riseandfall_war_enhancement_attacker.liege.primary_title = {
+					save_scope_as = riseandfall_war_enhancement_liege_primary_title
+				}
+			}
+			
+				
 			
 			if = {
 				limit = {
