@@ -1,0 +1,155 @@
+﻿l_english:
+ game_rule_category_riseandfall:0 "Rise and Fall"
+
+ # Adventurer creator rule
+ rule_riseandfall_enable_adventurer_creator:0 "Adventurer Creator"
+ setting_riseandfall_adventurer_creator_enabled:0 "Enabled"
+ setting_riseandfall_adventurer_creator_enabled_desc:0 "Adventurer creation active — eligible dynasty members may become landless adventurers with resources and a host, and may press claims (including kingdom or empire)."
+ setting_riseandfall_adventurer_creator_disabled:0 "Disabled"
+ setting_riseandfall_adventurer_creator_disabled_desc:0 "The adventurer creation system is disabled; dynasty members will not be converted."
+
+
+# Men-at-arms modifier rule
+rule_riseandfall_enable_mma_modifier:0 "Men-at-Arms Modifier"
+setting_riseandfall_mma_modifier_enabled:0 "Enabled"
+setting_riseandfall_mma_modifier_enabled_desc:0 "Apply the men-at-arms increase to all characters."
+setting_riseandfall_mma_modifier_disabled:0 "Disabled"
+setting_riseandfall_mma_modifier_disabled_desc:0 "Does not give the men-at-arms increase to all characters."
+
+# Adventurer cleanup rule
+rule_riseandfall_enable_adventurer_cleanup:0 "Adventurer Cleanup"
+setting_riseandfall_adventurer_cleanup:0 "Enabled"
+setting_riseandfall_adventurer_cleanup_desc:0 "Cleanup of mod-created adventurer titles is active (recommended)."
+setting_riseandfall_adventurer_cleanup_disabled:0 "Disabled"
+setting_riseandfall_adventurer_cleanup_disabled_desc:0 "Adventurer title cleanup is disabled; mod-created adventurer titles will persist and may affect performance in large worlds or long play sessions."
+
+# Adventurer Mega Wars rule
+rule_riseandfall_enable_adventurer_mega_wars:0 "Adventurer Mega Wars"
+setting_riseandfall_adventurer_mega_wars_enabled:0 "Enabled"
+setting_riseandfall_adventurer_mega_wars_enabled_desc:0 "When enabled, adventurers created by Rise and Fall (flagged with 'riseandfall_newadventurer') may trigger and participate in Mega Wars."
+setting_riseandfall_adventurer_mega_wars_disabled:0 "Disabled"
+setting_riseandfall_adventurer_mega_wars_disabled_desc:0 "Adventurers are excluded from Mega Wars."
+
+# Realm Stability rule
+rule_riseandfall_enable_realm_stability:0 "Realm Stability"
+setting_riseandfall_realm_stability_enabled:0 "Enabled"
+setting_riseandfall_realm_stability_enabled_desc:0 "Realm stability is active; rulers receive a stability rating and corresponding flags."
+setting_riseandfall_realm_stability_disabled:0 "Disabled"
+setting_riseandfall_realm_stability_disabled_desc:0 "Realm stability is inactive; no stability flags will be applied."
+
+# Legitimate Houses rule
+rule_riseandfall_legitimate_houses:0 "Legitimate Houses"
+setting_riseandfall_legitimate_houses_enabled:0 "Enabled"
+setting_riseandfall_legitimate_houses_enabled_desc:0 "Eligible independent duchy-tier and higher titles track their accepted ruling house. Administrative and Ritsuryo-style realms are excluded. Questionable dynasties can suffer a Realm Stability penalty until their rule becomes accepted."
+setting_riseandfall_legitimate_houses_disabled:0 "Disabled"
+setting_riseandfall_legitimate_houses_disabled_desc:0 "Legitimate house tracking is disabled and will not affect Realm Stability."
+
+# Realm Stability Settings (difficulty options)
+rule_riseandfall_realm_stability_difficulty:0 "Realm Stability Difficulty"
+setting_riseandfall_realm_stability_very_unstable:0 "Very Unstable"
+setting_riseandfall_realm_stability_very_unstable_desc:0 "Instability is increased by 50%."
+setting_riseandfall_realm_stability_unstable:0 "Unstable"
+setting_riseandfall_realm_stability_unstable_desc:0 "Instability is increased by 25%."
+setting_riseandfall_realm_stability_slightly_unstable:0 "Slightly Unstable"
+setting_riseandfall_realm_stability_slightly_unstable_desc:0 "Instability is increased by 10%."
+setting_riseandfall_realm_stability_normal:0 "Normal"
+setting_riseandfall_realm_stability_normal_desc:0 "Default stability balance."
+setting_riseandfall_realm_stability_slightly_stable:0 "Slightly Stable"
+setting_riseandfall_realm_stability_slightly_stable_desc:0 "Instability is reduced by 10%."
+setting_riseandfall_realm_stability_stable:0 "Stable"
+setting_riseandfall_realm_stability_stable_desc:0 "Instability is reduced by 25%."
+setting_riseandfall_realm_stability_very_stable:0 "Very Stable"
+setting_riseandfall_realm_stability_very_stable_desc:0 "Instability is reduced by 50%."
+
+# Realm Stability multiplier target (who the difficulty multiplier applies to)
+rule_riseandfall_realm_stability_difficulty_target:0 "Difficulty Targets"
+setting_riseandfall_realm_stability_difficulty_both:0 "Both"
+setting_riseandfall_realm_stability_difficulty_both_desc:0 "Apply difficulty scaling to both players and AI."
+setting_riseandfall_realm_stability_difficulty_player_only:0 "Player Only"
+setting_riseandfall_realm_stability_difficulty_player_only_desc:0 "Apply difficulty scaling to players only."
+setting_riseandfall_realm_stability_difficulty_ai_only:0 "AI Only"
+setting_riseandfall_realm_stability_difficulty_ai_only_desc:0 "Apply difficulty scaling to AI rulers only."
+
+# Men-at-arms cap increase rule (administrative governments)
+rule_riseandfall_enable_mma_limit_modifier:0 "Men-at-Arms Cap Increase (Administrative Titles)"
+setting_riseandfall_mma_limit_modifier_enabled:0 "Enabled"
+setting_riseandfall_mma_limit_modifier_enabled_desc:0 "Controls whether Rise and Fall applies a yearly men-at-arms cap increase modifier to administrative governments. Use with caution — it may be unbalanced."
+setting_riseandfall_mma_limit_modifier_disabled:0 "Disabled"
+setting_riseandfall_mma_limit_modifier_disabled_desc:0 "Do not apply the men-at-arms cap increase to administrative titles."
+
+# AI Kingdom Creation rule
+rule_riseandfall_enable_ai_kingdom_creation:0 "AI Title Creation"
+setting_riseandfall_ai_kingdom_creation_disabled:0 "Off"
+setting_riseandfall_ai_kingdom_creation_disabled_desc:0 "AI rulers will not automatically create higher-tier titles; they will only create them through normal game prompts."
+setting_riseandfall_ai_kingdom_creation_enabled:0 "Basic"
+setting_riseandfall_ai_kingdom_creation_enabled_desc:0 "AI rulers use the current Rise and Fall title creation and kingdom handout behavior."
+setting_riseandfall_ai_kingdom_creation_advanced:0 "Advanced (Beta)"
+setting_riseandfall_ai_kingdom_creation_advanced_desc:0 "Slower, stricter AI title logic. Creates or grants kingdoms only under pressure, avoids mega-vassals, and destroys spare high titles."
+
+
+# Interaction Stability (UI marker in interaction menu)
+rule_riseandfall_enable_interaction_stability:0 "Interaction Stability Marker"
+setting_riseandfall_interaction_stability_enabled:0 "Enabled"
+setting_riseandfall_interaction_stability_enabled_desc:0 "Will put stability and adventurer chance markers in the character interaction menu (recommended if other mods override these UI elements in the character screen)."
+setting_riseandfall_interaction_stability_disabled:0 "Disabled"
+setting_riseandfall_interaction_stability_disabled_desc:0 "Does not show stability or adventurer chance markers in the character interaction menu."
+
+# Low Stability Events rule
+rule_riseandfall_low_stability_events:0 "Low Stability Events"
+setting_riseandfall_low_stability_events_enabled:0 "Enabled"
+setting_riseandfall_low_stability_events_enabled_desc:0 "Low stability events may occur each year for rulers with low stability."
+setting_riseandfall_low_stability_events_disabled:0 "Disabled"
+setting_riseandfall_low_stability_events_disabled_desc:0 "Low stability events will not be triggered by the Rise and Fall mod."
+
+# Adventurer Chance rule
+rule_riseandfall_adventurer_chance:0 "Adventurer Chance"
+setting_riseandfall_adventurer_chance_low:0 "Low"
+setting_riseandfall_adventurer_chance_low_desc:0 "Low base chance (-1%) for adventurers."
+setting_riseandfall_adventurer_chance_medium:0 "Medium"
+setting_riseandfall_adventurer_chance_medium_desc:0 "Medium base chance (0%) for adventurers."
+setting_riseandfall_adventurer_chance_high:0 "High"
+setting_riseandfall_adventurer_chance_high_desc:0 "High base chance (+1%) for adventurers."
+
+# Vassal limit rule
+rule_riseandfall_vassal_limit_rule:0 "Vassal Limit Bonus For Non-Independent Rulers"
+setting_riseandfall_vassal_limit_enabled:0 "Enabled"
+setting_riseandfall_vassal_limit_enabled_desc:0 "When enabled, non-independent rulers receive a permanent vassal limit increase."
+setting_riseandfall_vassal_limit_disabled:0 "Disabled"
+setting_riseandfall_vassal_limit_disabled_desc:0 "Do not apply the vassal limit bonus."
+
+# Bordergore Fix rule
+rule_riseandfall_enable_bordergore_fix:0 "Bordergore Fix"
+setting_riseandfall_bordergore_fix_enabled:0 "Enabled"
+setting_riseandfall_bordergore_fix_enabled_desc:0 "When enabled, AI rulers will automatically fix bordergore in administrative realms; players will also be given a character interaction to perform the same fixes manually."
+setting_riseandfall_bordergore_fix_disabled:0 "Disabled"
+setting_riseandfall_bordergore_fix_disabled_desc:0 "AI will not automatically fix bordergore and the player will not see the manual 'Fix Bordergore' interaction."
+
+# War Enhancement rule
+rule_riseandfall_enable_war_enhancement:0 "War Enhancement (BETA)"
+setting_riseandfall_war_enhancement_enabled:0 "Enabled"
+setting_riseandfall_war_enhancement_enabled_desc:0 "War enhancement mechanics are active, including post-war succession and rebellion dynamics for specific casus belli."
+setting_riseandfall_war_enhancement_disabled:0 "Disabled"
+setting_riseandfall_war_enhancement_disabled_desc:0 "War enhancement mechanics are disabled; wars will follow vanilla behavior."
+
+# Lite Mode rule (lighter experience)
+rule_riseandfall_lite_mode:0 "Lite Mode"
+setting_riseandfall_lite_mode_enabled:0 "Enabled"
+setting_riseandfall_lite_mode_enabled_desc:0 "Disables player 'Fix Bordergore' and 'Puppet Master' interactions; AI will still use them. Enable if right‑click crashes occur due to conflicting interaction categories."
+setting_riseandfall_lite_mode_disabled:0 "Disabled"
+setting_riseandfall_lite_mode_disabled_desc:0 "Full Rise and Fall features (player interactions enabled). Enable this if the game crashes when right‑clicking."
+
+# Admin succession chaos rule
+rule_riseandfall_admin_score_nerf:0 "Admin Succession Chaos"
+setting_riseandfall_admin_score_nerf_enabled:0 "Enabled"
+setting_riseandfall_admin_score_nerf_enabled_desc:0 "When enabled, admin succession scoring receives a randomized nerf to make administrative appointments more chaotic and unpredictable."
+setting_riseandfall_admin_score_nerf_disabled:0 "Disabled"
+setting_riseandfall_admin_score_nerf_disabled_desc:0 "Admin succession scoring is not modified by Rise and Fall."
+
+# Dynamic Story Mode rule
+rule_riseandfall_enable_dynamic_story_mode:0 "Dynamic Story Mode (BETA)"
+setting_riseandfall_dynamic_story_mode_off:0 "Off"
+setting_riseandfall_dynamic_story_mode_off_desc:0 "Dynamic Story Mode is inactive."
+setting_riseandfall_dynamic_story_mode_dynamic:0 "Dynamic"
+setting_riseandfall_dynamic_story_mode_dynamic_desc:0 "A campaign director assigns independent realms story roles, protects some powers, and pressures oversized stable realms when the world becomes too peaceful."
+setting_riseandfall_dynamic_story_mode_forced:0 "Forced"
+setting_riseandfall_dynamic_story_mode_forced_desc:0 "The campaign director uses stronger anti-blob pressure against large empires, hegemonies, and long-stable powers."

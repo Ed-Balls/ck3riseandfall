@@ -1,0 +1,333 @@
+﻿# Rise and Fall - Adventurer Chance Hover Tooltip
+# Loaded from gui/shared/ so it is available globally.
+
+types RiseAndFallAdventurerTooltipTypes
+{
+	type adventurer_chance_tooltip = object_tooltip_pop_out
+	{
+		visible = "[Character.MakeScope.Var('rf_adventurer_final_chance').IsSet]"
+
+		blockoverride "title_text"
+		{
+			raw_text = ""
+		}
+
+		blockoverride "concept_link"
+		{
+			raw_text = ""
+		}
+
+		blockoverride "subheading"
+		{
+			raw_text = ""
+		}
+
+		blockoverride "header_additions"
+		{
+			widget = {
+				size = { 120 110 }
+
+				widget = {
+					size = { 500 110 }
+					position = { 8 0 }
+
+					proportional_icon = {
+						size = { 100% 100% }
+						texture = "gfx/interface/window_legend_chronicle/under_expected_legitimacy_decoration.dds"
+						using = Mask_Rough_Edges
+					}
+				}
+			}
+		}
+
+		blockoverride "main_description"
+		{
+			vbox = {
+				layoutpolicy_horizontal = expanding
+				margin = { 8 6 }
+				spacing = 8
+
+				widget = {
+					size = { 500 92 }
+
+					background = {
+						using = Background_Area_Dark
+						margin = { 4 4 }
+					}
+
+					progressbar_standard = {
+						visible = "[GreaterThanOrEqualTo_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)40' )]"
+						parentanchor = hcenter|top
+						position = { 0 18 }
+						size = { 480 24 }
+						min = 0
+						max = 100
+						value = "[FixedPointToProgressbarValue( Divide_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)100' ) )]"
+
+						blockoverride "progress_textures"
+						{
+							progresstexture = "gfx/interface/progressbars/progress_red.dds"
+							noprogresstexture = "gfx/interface/progressbars/progress_red_bg.dds"
+						}
+
+						modify_texture = {
+							name = "adventurer_gold_glow"
+							texture = "gfx/interface/colors/gold.dds"
+							blend_mode = colordodge
+							alpha = 0.45
+						}
+					}
+
+					progressbar_standard = {
+						visible = "[And( GreaterThanOrEqualTo_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)15' ), LessThan_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)40' ) )]"
+						parentanchor = hcenter|top
+						position = { 0 18 }
+						size = { 480 24 }
+						min = 0
+						max = 100
+						value = "[FixedPointToProgressbarValue( Divide_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)100' ) )]"
+
+						blockoverride "progress_textures"
+						{
+							progresstexture = "gfx/interface/progressbars/progress_orange.dds"
+							noprogresstexture = "gfx/interface/progressbars/progress_orange_bg.dds"
+						}
+
+						modify_texture = {
+							name = "adventurer_gold_glow"
+							texture = "gfx/interface/colors/gold.dds"
+							blend_mode = colordodge
+							alpha = 0.45
+						}
+					}
+
+					progressbar_standard = {
+						visible = "[LessThan_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)15' )]"
+						parentanchor = hcenter|top
+						position = { 0 18 }
+						size = { 480 24 }
+						min = 0
+						max = 100
+						value = "[FixedPointToProgressbarValue( Divide_CFixedPoint( Character.MakeScope.Var('rf_adventurer_final_chance').GetValue, '(CFixedPoint)100' ) )]"
+
+						blockoverride "progress_textures"
+						{
+							progresstexture = "gfx/interface/progressbars/progress_green.dds"
+							noprogresstexture = "gfx/interface/progressbars/progress_green_bg.dds"
+						}
+
+						modify_texture = {
+							name = "adventurer_gold_glow"
+							texture = "gfx/interface/colors/gold.dds"
+							blend_mode = colordodge
+							alpha = 0.45
+						}
+					}
+
+					icon = {
+						parentanchor = hcenter|top
+						position = { 0 1 }
+						size = { 52 52 }
+						texture = "gfx/interface/icons/dynasty/legitimist_revolt.dds"
+					}
+
+					text_single = {
+						parentanchor = hcenter|bottom
+						position = { 0 -5 }
+						text = "ADVENTURER_CHANCE_TT_FINAL_VALUE"
+						default_format = "#high"
+						align = hcenter|nobaseline
+					}
+				}
+
+				vbox = {
+					layoutpolicy_horizontal = expanding
+					spacing = 4
+					background = {
+						using = Background_Area_Dark
+						margin = { 3 3 }
+					}
+
+					vbox = {
+						layoutpolicy_horizontal = expanding
+						margin = { 8 6 }
+						hbox = {
+							layoutpolicy_horizontal = expanding
+							expand = {}
+							icon = {
+								size = { 22 22 }
+								texture = "gfx/interface/icons/icon_prowess.dds"
+								margin_right = 4
+							}
+							text_single = {
+								text = "ADVENTURER_CHANCE_TT_BASE_HEADER"
+								default_format = "#high"
+								align = nobaseline
+							}
+							expand = {}
+						}
+						vbox = {
+							layoutpolicy_horizontal = expanding
+							margin = { 50 0 }
+							spacing = 2
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_BASE_CHANCE_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_BASE_CHANCE_R"
+									default_format = "#low"
+								}
+							}
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_TRAIT_BONUS_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_TRAIT_BONUS_R"
+									default_format = "#low"
+								}
+							}
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_INTRIGUE_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_INTRIGUE_R"
+									default_format = "#low"
+								}
+							}
+						}
+					}
+
+					vbox = {
+						layoutpolicy_horizontal = expanding
+						margin = { 8 6 }
+						hbox = {
+							layoutpolicy_horizontal = expanding
+							expand = {}
+							icon = {
+								size = { 22 22 }
+								texture = "gfx/interface/icons/icon_scheme.dds"
+								margin_right = 4
+							}
+							text_single = {
+								text = "ADVENTURER_CHANCE_TT_OPINION_HEADER"
+								default_format = "#high"
+								align = nobaseline
+							}
+							expand = {}
+						}
+						vbox = {
+							layoutpolicy_horizontal = expanding
+							margin = { 50 0 }
+							spacing = 2
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_OPINION_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_OPINION_R"
+									default_format = "#low"
+								}
+							}
+						}
+					}
+
+					vbox = {
+						visible = "[LessThan_CFixedPoint( Character.MakeScope.Var('rf_sex_penalty').GetValue, '(CFixedPoint)0' )]"
+						layoutpolicy_horizontal = expanding
+						margin = { 8 6 }
+						hbox = {
+							layoutpolicy_horizontal = expanding
+							expand = {}
+							icon = {
+								size = { 22 22 }
+								texture = "gfx/interface/icons/title_status/icon_title_law.dds"
+								margin_right = 4
+							}
+							text_single = {
+								text = "ADVENTURER_CHANCE_TT_SEX_HEADER"
+								default_format = "#high"
+								align = nobaseline
+							}
+							expand = {}
+						}
+						vbox = {
+							layoutpolicy_horizontal = expanding
+							margin = { 50 0 }
+							spacing = 2
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_SEX_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_SEX_R"
+									default_format = "#low"
+								}
+							}
+						}
+					}
+
+					vbox = {
+						layoutpolicy_horizontal = expanding
+						margin = { 8 6 }
+						hbox = {
+							layoutpolicy_horizontal = expanding
+							expand = {}
+							icon = {
+								size = { 22 22 }
+								texture = "gfx/interface/icons/scale_of_power.dds"
+								margin_right = 4
+							}
+							text_single = {
+								text = "ADVENTURER_CHANCE_TT_STABILITY_HEADER"
+								default_format = "#high"
+								align = nobaseline
+							}
+							expand = {}
+						}
+						vbox = {
+							layoutpolicy_horizontal = expanding
+							margin = { 50 0 }
+							spacing = 2
+
+							hbox = {
+								layoutpolicy_horizontal = expanding
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_STABILITY_L"
+									default_format = "#low"
+								}
+								expand = {}
+								text_single = {
+									text = "ADVENTURER_CHANCE_TT_STABILITY_R"
+									default_format = "#low"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

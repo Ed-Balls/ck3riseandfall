@@ -1,0 +1,4 @@
+﻿CK3: Rise and Fall - 1.0.4
+
+Puppet Master
+- Prevented puppet masters who cannot marry from overthrowing their liege and taking power.

@@ -1,0 +1,337 @@
+﻿##########################
+# Rise and Fall - Realm Split Triggers
+# Triggers for the realm split system
+
+##########################
+# Helper trigger to check if government lacks powerful vassals
+# Returns true if the government doesn't use powerful vassal system
+# Covers: Mandala (no_powerful_vassals flag), Administrative (administrative rule),
+#         Japanese Ritsuryo (deny_powerful_vassal), Celestial, Meritocratic, Steppe Admin
+
+riseandfall_no_powerful_vassals_trigger = {
+    OR = {
+        government_has_flag = no_powerful_vassals
+        government_allows = deny_powerful_vassal
+        government_allows = administrative
+    }
+}
+
+##########################
+# Trigger for Realm Split Eligibility
+# Returns true if the ruler can have their realm split
+
+riseandfall_can_realm_split_trigger = {
+    is_independent_ruler = yes
+    primary_title.tier >= tier_kingdom
+    # Must have at least 2 landed vassals
+    any_vassal = {
+        count >= 2
+        is_landed = yes
+        primary_title.tier >= tier_county
+    }
+    # Only allow realm split when at least half of the realm territory is held by warlord vassals.
+    any_realm_county = {
+        percent >= 0.20
+        holder = {
+            is_landed = yes
+            has_trait = warlord
+        }
+    }
+
+    # Also require at least one single vassal to control a quarter of the realm.
+    any_vassal = {
+        count >= 1
+        is_landed = yes
+        primary_title.tier >= tier_county
+           # Inside any_vassal, the outer ruler scope is `prev`, not an event-target `root`.
+           sub_realm_size >= prev.rf_25_percent_realm_size_value
+    }
+}
+
+##########################
+# Successor-state helper triggers (Diadochi wars)
+
+riseandfall_has_successor_primary_title_trigger = {
+    is_independent_ruler = yes
+    primary_title = {
+        has_variable = rf_is_successor_split_title
+        has_variable = rf_successor_root_origin_title
+    }
+}
+
+riseandfall_can_use_diadochi_cb_trigger = {
+    riseandfall_has_successor_primary_title_trigger = yes
+}
+
+riseandfall_can_see_diadochi_browser_trigger = {
+    is_landed = yes
+    is_independent_ruler = yes
+    exists = primary_title
+    NOR = {
+        government_has_flag = government_is_landless_adventurer
+    }
+    OR = {
+        # Successor states can always see the browser once their primary title
+        # has split-origin metadata; stricter war checks only control validity.
+        riseandfall_has_successor_primary_title_trigger = yes
+        # The original realm can see the browser while it has any independent
+        # successor state pointing back to its primary title.
+        any_independent_ruler = {
+            NOT = { this = root }
+            riseandfall_has_successor_primary_title_trigger = yes
+            primary_title.var:rf_successor_root_origin_title = root.primary_title
+        }
+    }
+}
+
+riseandfall_can_browse_diadochi_targets_trigger = {
+    is_landed = yes
+    is_independent_ruler = yes
+    exists = primary_title
+    NOR = {
+        government_has_flag = government_is_landless_adventurer
+    }
+    OR = {
+        any_neighboring_realm_owner = {
+            NOT = { this = root }
+            is_landed = yes
+            is_independent_ruler = yes
+            exists = primary_title
+            NOT = { has_truce = root }
+            NOT = { is_allied_to = root }
+            NOT = { is_at_war_with = root }
+            root = {
+                can_declare_war = {
+                    defender = prev
+                    casus_belli = riseandfall_diadochi_cb
+                    target_titles = { prev.primary_title }
+                }
+            }
+        }
+        any_independent_ruler = {
+            NOT = { this = root }
+            is_landed = yes
+            is_independent_ruler = yes
+            exists = primary_title
+            NOT = { has_truce = root }
+            NOT = { is_allied_to = root }
+            NOT = { is_at_war_with = root }
+            root = {
+                can_declare_war = {
+                    defender = prev
+                    casus_belli = riseandfall_diadochi_cb
+                    target_titles = { prev.primary_title }
+                }
+            }
+        }
+        AND = {
+            riseandfall_has_successor_primary_title_trigger = yes
+            primary_title.var:rf_successor_root_origin_title = {
+                exists = holder
+                holder = {
+                    NOT = { this = root }
+                    is_landed = yes
+                    is_independent_ruler = yes
+                    exists = primary_title
+                    NOT = { has_truce = root }
+                    NOT = { is_allied_to = root }
+                    NOT = { is_at_war_with = root }
+                    root = {
+                        can_declare_war = {
+                            defender = prev
+                            casus_belli = riseandfall_diadochi_cb
+                            target_titles = { root.primary_title.var:rf_successor_root_origin_title }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+riseandfall_is_diadochi_target_trigger = {
+    # Root scope is defender (called from allowed_against_character).
+    # Keep this simple:
+    # 1) successor vs successor, same origin title
+    # 2) origin ruler vs successor
+    # 3) successor vs origin
+    OR = {
+        # Successor attacks another successor from the same origin title.
+        AND = {
+            riseandfall_has_successor_primary_title_trigger = yes
+            scope:attacker = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:attacker.primary_title.var:rf_successor_root_origin_title = scope:defender.primary_title.var:rf_successor_root_origin_title
+        }
+        # Origin ruler attacks one of its successor states.
+        AND = {
+            riseandfall_has_successor_primary_title_trigger = yes
+            scope:attacker = {
+                has_title = scope:defender.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+        # Successor attacks its origin ruler.
+        AND = {
+            scope:attacker = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:defender = {
+                has_title = scope:attacker.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+    }
+}
+
+riseandfall_is_same_successor_conflict_interaction_trigger = {
+    scope:actor = {
+        is_landed = yes
+        exists = primary_title
+    }
+    scope:recipient = {
+        is_landed = yes
+        exists = primary_title
+    }
+    OR = {
+        AND = {
+            scope:actor = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:recipient = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:actor.primary_title.var:rf_successor_root_origin_title = scope:recipient.primary_title.var:rf_successor_root_origin_title
+        }
+        AND = {
+            scope:actor = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:recipient = {
+                has_title = scope:actor.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+        AND = {
+            scope:recipient = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:actor = {
+                has_title = scope:recipient.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+    }
+}
+
+riseandfall_can_demote_successor_primary_below_recipient_trigger = {
+    # Equal-or-higher rank moves only work when the actor can shed their
+    # successor crown and keep a real lower title under the new liege. Titular
+    # successor crowns are destroyed; non-titular crowns are handed upward.
+    exists = primary_title
+    scope:recipient = { exists = primary_title }
+    primary_title = {
+        has_variable = rf_is_successor_split_title
+        has_variable = rf_successor_root_origin_title
+    }
+    primary_title.tier >= scope:recipient.primary_title.tier
+    OR = {
+        AND = {
+            scope:recipient = { primary_title.tier >= tier_hegemony }
+            any_held_title = {
+                tier = tier_empire
+                is_titular = no
+                NOT = { this = prev.primary_title }
+            }
+        }
+        AND = {
+            scope:recipient = { primary_title.tier >= tier_empire }
+            any_held_title = {
+                tier = tier_kingdom
+                is_titular = no
+                NOT = { this = prev.primary_title }
+            }
+        }
+        AND = {
+            scope:recipient = { primary_title.tier >= tier_kingdom }
+            any_held_title = {
+                tier = tier_duchy
+                is_titular = no
+                NOT = { this = prev.primary_title }
+            }
+        }
+        AND = {
+            scope:recipient = { primary_title.tier >= tier_duchy }
+            any_held_title = {
+                tier = tier_county
+                is_titular = no
+                NOT = { this = prev.primary_title }
+            }
+        }
+    }
+}
+
+riseandfall_can_switch_successor_sides_trigger = {
+    scope:actor = {
+        is_landed = yes
+        is_ruler = yes
+        is_independent_ruler = no
+        exists = liege
+        liege = top_liege
+        primary_title.tier >= tier_county
+        primary_title.tier < tier_hegemony
+        NOT = { government_has_flag = government_is_landless_adventurer }
+        # Defection is a voluntary camp switch, so it cannot bypass a truce
+        # with the current liege or an active direct war against them.
+        custom_tooltip = {
+            text = riseandfall_switch_sides_no_truce_with_liege
+            NOT = { has_truce = liege }
+        }
+        custom_tooltip = {
+            text = riseandfall_switch_sides_not_at_war_with_liege
+            NOT = { is_at_war_with = liege }
+        }
+    }
+    scope:recipient = {
+        is_landed = yes
+        is_independent_ruler = yes
+        exists = primary_title
+        NOT = { this = scope:actor }
+        NOT = { government_has_flag = government_is_landless_adventurer }
+    }
+    scope:actor.liege != scope:recipient
+    # Defection is a vassalage move. Equal-or-higher rank actors must shed a
+    # titular successor crown and remain landed through a real lower title.
+    OR = {
+        scope:actor = { primary_title.tier < scope:recipient.primary_title.tier }
+        scope:actor = { riseandfall_can_demote_successor_primary_below_recipient_trigger = yes }
+    }
+    OR = {
+        AND = {
+            scope:actor.liege = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:recipient = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:actor.liege.primary_title.var:rf_successor_root_origin_title = scope:recipient.primary_title.var:rf_successor_root_origin_title
+        }
+        AND = {
+            scope:actor.liege = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:recipient = {
+                has_title = scope:actor.liege.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+        AND = {
+            scope:recipient = { riseandfall_has_successor_primary_title_trigger = yes }
+            scope:actor.liege = {
+                has_title = scope:recipient.primary_title.var:rf_successor_root_origin_title
+            }
+        }
+    }
+}
+
+riseandfall_can_surrender_successor_realm_trigger = {
+    scope:actor = {
+        is_landed = yes
+        is_independent_ruler = yes
+        riseandfall_has_successor_primary_title_trigger = yes
+        NOT = { this = scope:recipient }
+        NOT = { government_has_flag = government_is_landless_adventurer }
+    }
+    scope:recipient = {
+        is_landed = yes
+        is_independent_ruler = yes
+        exists = primary_title
+        NOT = { government_has_flag = government_is_landless_adventurer }
+    }
+    # Surrender no longer creates promotion titles. Equal-or-higher rank actors
+    # must either transfer a hegemony title or drop a titular successor crown.
+    OR = {
+        scope:actor = { primary_title.tier < scope:recipient.primary_title.tier }
+        scope:actor = { primary_title.tier = tier_hegemony }
+        scope:actor = { riseandfall_can_demote_successor_primary_below_recipient_trigger = yes }
+    }
+    riseandfall_is_same_successor_conflict_interaction_trigger = yes
+}

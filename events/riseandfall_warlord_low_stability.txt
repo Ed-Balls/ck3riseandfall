@@ -1,0 +1,285 @@
+﻿namespace = warlord
+
+# Liege-facing notification: informs the ruler that warlords are rising among vassals
+warlord.1001 = {
+    type = character_event
+    title = warlord.1001.t
+    desc = warlord.1001.d
+    theme = realm
+
+    left_portrait = root
+
+    option = {
+        name = warlord.1001.a
+        ai_chance = { base = 100 }
+        # Grant the liege a realm law and run the hidden_effect so the iteration runs in effect scope
+        if = {
+            limit = { NOT = { has_realm_law = crown_authority_0 } }
+            add_realm_law = crown_authority_0
+        }
+        hidden_effect = {
+            riseandfall_warlord_notify_vassals = yes
+            # Set low stability cooldown on the liege when this event fires
+            add_character_flag = { flag = rf_low_stability_cooldown years = 5 }
+        }
+    }
+}
+
+# Vassal-facing decision: vassals may choose to become a warlord or remain loyal
+warlord.1002 = {
+    type = character_event
+    title = warlord.1002.t
+    desc = warlord.1002.d
+    theme = realm
+
+    left_portrait = liege
+    right_portrait = root
+
+    immediate = {
+        save_opinion_value_as = { name = liege_opinion target = liege }
+    }
+
+    option = {
+        name = warlord.1002.a
+        # Become a warlord: gain the 'warlord' trait and create a decision to raise faction/claim
+        riseandfall_warlord_become_warlord = yes
+        ai_chance = {
+            base = 0
+            modifier = {
+                # only landed vassals consider rebellion
+                add = 100
+            }
+            modifier = {
+                # low crown authority makes vassals emboldened
+                add = 100
+                liege = {
+                    has_realm_law = crown_authority_0
+                }
+            }
+            modifier = {
+                add = { subtract = scope:liege_opinion }
+                always = yes
+            }
+            modifier = {
+                add = 40
+                has_trait = ambitious
+            }
+            modifier = {
+                add = 40
+                has_trait = vengeful
+            }
+            modifier = {
+                add = 20
+                has_trait = brave
+            }
+            modifier = {
+                add = 40
+                liege = {
+                    has_relation_rival = root
+                }
+            }
+            modifier = {
+                add = 40
+                has_trait = disloyal
+            }
+            modifier = {
+                add = 20
+                opinion = { target = liege value <= -20 }
+            }
+            modifier = {
+                add = -30
+                has_trait = loyal
+            }
+            modifier = {
+                add = -20
+                has_trait = craven
+            }
+            modifier = {
+                add = -20
+                has_trait = content
+            }
+        }
+    }
+
+    option = {
+        name = warlord.1002.b
+        # Remain loyal: record the choice so this event is not offered again soon
+        set_variable = { name = riseandfall_warlord_choice_made value = yes years = 3 }
+        # For the player, also set the loyal flag so the path manager decision becomes available
+        if = {
+            limit = { is_ai = no }
+            add_character_flag = riseandfall_warlord_player_loyal
+        }
+        riseandfall_warlord_remain_loyal = yes
+        # small positive opinion or stability bonus could be added by scripted effects
+        ai_chance = {
+            base = 0
+            modifier = {
+                add = scope:liege_opinion
+            }
+            modifier = {
+                # high crown authority encourages loyalty
+                add = 100
+                liege = {
+                    has_realm_law = crown_authority_2
+                }
+            }
+            modifier = {
+                add = 40
+                has_trait = loyal
+            }
+            modifier = {
+                add = 30
+                has_trait = patient
+            }
+            modifier = {
+                add = 30
+                has_trait = content
+            }
+            modifier = {
+                add = 20
+                has_trait = honest
+            }
+            modifier = {
+                add = 20
+                has_trait = just
+            }
+            modifier = {
+                add = -40
+                has_trait = vengeful
+            }
+            modifier = {
+                add = -30
+                has_trait = ambitious
+            }
+            modifier = {
+                add = -40
+                has_trait = disloyal
+            }
+            modifier = {
+                add = -40
+                liege = {
+                    has_relation_rival = root
+                }
+            }
+        }
+    }
+}
+
+# Warlord event: triggered for rulers with the warlord trait
+warlord.1003 = {
+    type = character_event
+    title = warlord.1003.t
+    desc = warlord.1003.d
+    theme = realm
+
+    left_portrait = liege
+    right_portrait = root
+
+    immediate = {
+        save_opinion_value_as = { name = liege_opinion target = liege }
+    }
+
+    option = {
+        name = warlord.1003.a
+        # Continue as warlord: continually evaluate claims
+        riseandfall_warlord_claim_liege_titles = yes
+        ai_chance = {
+            base = 0
+            modifier = {
+                add = 100
+            }
+            modifier = {
+                add = { subtract = scope:liege_opinion }
+                always = yes
+            }
+            modifier = {
+                add = 40
+                has_trait = ambitious
+            }
+            modifier = {
+                add = 40
+                has_trait = vengeful
+            }
+            modifier = {
+                add = 30
+                has_trait = brave
+            }
+            modifier = {
+                add = 40
+                has_trait = disloyal
+            }
+            modifier = {
+                add = 40
+                liege = {
+                    has_relation_rival = root
+                }
+            }
+            modifier = {
+                add = -30
+                has_trait = loyal
+            }
+            modifier = {
+                add = -20
+                has_trait = patient
+            }
+            modifier = {
+                add = -20
+                has_trait = content
+            }
+            modifier = {
+                add = -20
+                has_trait = honest
+            }
+        }
+    }
+    option = {
+        name = warlord.1003.b
+        # Abandon the warlord path: remove trait and claims
+        riseandfall_warlord_abandon_path = yes
+        ai_chance = {
+            base = 0
+            modifier = {
+                add = scope:liege_opinion
+            }
+            modifier = {
+                add = 40
+                has_trait = loyal
+            }
+            modifier = {
+                add = 30
+                has_trait = patient
+            }
+            modifier = {
+                add = 30
+                has_trait = content
+            }
+            modifier = {
+                add = 20
+                has_trait = honest
+            }
+            modifier = {
+                add = 20
+                has_trait = just
+            }
+            modifier = {
+                add = -40
+                has_trait = vengeful
+            }
+            modifier = {
+                add = -30
+                has_trait = ambitious
+            }
+            modifier = {
+                add = -40
+                has_trait = disloyal
+            }
+            modifier = {
+                add = -40
+                liege = {
+                    has_relation_rival = root
+                }
+            }
+        }
+    }
+}

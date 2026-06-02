@@ -1,0 +1,1836 @@
+﻿##########################
+# Rise and Fall - Realm Stability
+# Computes a 0..100 realm stability score and stores it on the ruler as
+# riseandfall_realm_stability_score
+# Weighting (user spec):
+#  - Ruler stats: each stat contributes (stat - 10), clamped to -6..+6.
+#    The five stat contributions are then summed and clamped to -30..+30.
+#  - Legitimacy: additive component (-20..+15); no legitimacy = -20, full legitimacy = +15
+#  - Vassal relations: mapped to -30..+30 (average direct vassal opinion -100..100)
+#    Powerful vassals count double. Noble relations dominated medieval stability.
+#  - Partition succession: -10 (destabilising — historical Carolingian/West Frankish pattern)
+#  - Smoothing: asymmetric — decline faster (ceil(d/3)/yr), recovery slower (ceil(d/7)/yr)
+
+riseandfall_calculate_realm_stability_se = {
+    # Root scope: called from an every_ruler on_action, so root is the ruler
+    # Clear any previous working vars
+    remove_variable = riseandfall_rs_stats_component
+    remove_variable = riseandfall_rs_vassals_component
+    remove_variable = riseandfall_rs_realm_size_component
+    remove_variable = riseandfall_rs_culture_faith_component
+    remove_variable = riseandfall_rs_epidemic_component
+    remove_variable = riseandfall_rs_partition_component
+    remove_variable = riseandfall_rs_succession_component
+    remove_variable = riseandfall_rs_legitimate_house_component
+    remove_variable = riseandfall_rs_story_pressure_component
+    remove_variable = riseandfall_story_recovery_component
+    remove_variable = riseandfall_rs_strong_vassal_count
+    remove_variable = riseandfall_rs_foreign_culture_county_pct
+    remove_variable = riseandfall_rs_foreign_faith_county_pct
+    remove_variable = riseandfall_rs_epidemic_province_pct
+
+    # Legacy story-mode variables were removed from active use.
+    # Avoid removing unset legacy vars here because CK3 logs that as a live use.
+
+    ########################################
+    # GLOBAL STAT AVERAGE CACHE (recomputed every 10 calendar years)
+    # We keep track of the last year the calculation ran plus a decade counter.
+    # The routine below only executes once per ingame year (using current_year)
+    # and when ten years have passed we walk every_ruler and recompute averages.
+    # Initialize tracking globals if missing.
+    if = { limit = { NOT = { exists = global_var:riseandfall_stat_avg_last_year } } set_global_variable = { name = riseandfall_stat_avg_last_year value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_stat_avg_years } } set_global_variable = { name = riseandfall_stat_avg_years value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_diplomacy } } set_global_variable = { name = riseandfall_avg_diplomacy value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_martial } } set_global_variable = { name = riseandfall_avg_martial value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_stewardship } } set_global_variable = { name = riseandfall_avg_stewardship value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_intrigue } } set_global_variable = { name = riseandfall_avg_intrigue value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_learning } } set_global_variable = { name = riseandfall_avg_learning value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_ruler_count } } set_global_variable = { name = riseandfall_ruler_count value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_avg_total } } set_global_variable = { name = riseandfall_avg_total value = 0 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_world_total } } set_global_variable = { name = riseandfall_world_total value = 1 } }
+    if = { limit = { NOT = { exists = global_var:riseandfall_world_total_development } } set_global_variable = { name = riseandfall_world_total_development value = 1 } }
+
+    if = {
+        limit = {
+            OR = {
+                global_var:riseandfall_avg_diplomacy <= 0
+                global_var:riseandfall_avg_martial <= 0
+                global_var:riseandfall_avg_stewardship <= 0
+                global_var:riseandfall_avg_intrigue <= 0
+                global_var:riseandfall_avg_learning <= 0
+            }
+        }
+        set_global_variable = { name = riseandfall_stat_avg_last_year value = 0 }
+    }
+
+    # run once per year (and run an initial calculation on first call)
+    if = {
+        limit = { NOT = { current_year = global_var:riseandfall_stat_avg_last_year } }
+        set_global_variable = { name = riseandfall_world_total value = 0 }
+        set_global_variable = { name = riseandfall_world_total_development value = 0 }
+        every_independent_ruler = {
+            change_global_variable = { name = riseandfall_world_total add = realm_size }
+            save_scope_as = rf_development_ruler
+            set_variable = { name = riseandfall_rs_total_development value = 0 }
+            every_realm_county = {
+                scope:rf_development_ruler = {
+                    change_variable = { name = riseandfall_rs_total_development add = prev.development_level }
+                }
+            }
+            change_global_variable = { name = riseandfall_world_total_development add = var:riseandfall_rs_total_development }
+        }
+        if = { limit = { global_var:riseandfall_world_total < 1 } set_global_variable = { name = riseandfall_world_total value = 1 } }
+        if = { limit = { global_var:riseandfall_world_total_development < 1 } set_global_variable = { name = riseandfall_world_total_development value = 1 } }
+        # if this is the very first time we've ever executed, recompute now
+        if = { limit = { global_var:riseandfall_stat_avg_last_year = 0 }
+            set_global_variable = { name = riseandfall_avg_diplomacy value = 0 }
+            set_global_variable = { name = riseandfall_avg_martial value = 0 }
+            set_global_variable = { name = riseandfall_avg_stewardship value = 0 }
+            set_global_variable = { name = riseandfall_avg_intrigue value = 0 }
+            set_global_variable = { name = riseandfall_avg_learning value = 0 }
+            set_global_variable = { name = riseandfall_avg_total value = 0 }
+            set_global_variable = { name = riseandfall_ruler_count value = 0 }
+            every_ruler = {
+                change_global_variable = { name = riseandfall_ruler_count add = 1 }
+                change_global_variable = { name = riseandfall_avg_diplomacy add = diplomacy }
+                change_global_variable = { name = riseandfall_avg_martial add = martial }
+                change_global_variable = { name = riseandfall_avg_stewardship add = stewardship }
+                change_global_variable = { name = riseandfall_avg_intrigue add = intrigue }
+                change_global_variable = { name = riseandfall_avg_learning add = learning }
+                change_global_variable = { name = riseandfall_avg_total add = diplomacy }
+                change_global_variable = { name = riseandfall_avg_total add = martial }
+                change_global_variable = { name = riseandfall_avg_total add = stewardship }
+                change_global_variable = { name = riseandfall_avg_total add = intrigue }
+                change_global_variable = { name = riseandfall_avg_total add = learning }
+            }
+            if = { limit = { global_var:riseandfall_ruler_count > 0 }
+                change_global_variable = { name = riseandfall_avg_diplomacy divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_martial divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_stewardship divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_intrigue divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_learning divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_total divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_total divide = 5 }
+
+            }
+        }
+        change_global_variable = { name = riseandfall_stat_avg_years add = 1 }
+        set_global_variable = { name = riseandfall_stat_avg_last_year value = current_year }
+        # perform decadal recompute
+        if = { limit = { global_var:riseandfall_stat_avg_years >= 10 }
+            set_global_variable = { name = riseandfall_stat_avg_years value = 0 }
+            set_global_variable = { name = riseandfall_avg_diplomacy value = 0 }
+            set_global_variable = { name = riseandfall_avg_martial value = 0 }
+            set_global_variable = { name = riseandfall_avg_stewardship value = 0 }
+            set_global_variable = { name = riseandfall_avg_intrigue value = 0 }
+            set_global_variable = { name = riseandfall_avg_learning value = 0 }
+            set_global_variable = { name = riseandfall_avg_total value = 0 }
+            set_global_variable = { name = riseandfall_ruler_count value = 0 }
+            every_ruler = {
+                change_global_variable = { name = riseandfall_ruler_count add = 1 }
+                change_global_variable = { name = riseandfall_avg_diplomacy add = diplomacy }
+                change_global_variable = { name = riseandfall_avg_martial add = martial }
+                change_global_variable = { name = riseandfall_avg_stewardship add = stewardship }
+                change_global_variable = { name = riseandfall_avg_intrigue add = intrigue }
+                change_global_variable = { name = riseandfall_avg_learning add = learning }
+                change_global_variable = { name = riseandfall_avg_total add = diplomacy }
+                change_global_variable = { name = riseandfall_avg_total add = martial }
+                change_global_variable = { name = riseandfall_avg_total add = stewardship }
+                change_global_variable = { name = riseandfall_avg_total add = intrigue }
+                change_global_variable = { name = riseandfall_avg_total add = learning }
+            }
+            if = { limit = { global_var:riseandfall_ruler_count > 0 }
+                change_global_variable = { name = riseandfall_avg_diplomacy divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_martial divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_stewardship divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_intrigue divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_learning divide = global_var:riseandfall_ruler_count }
+                # average of five stats = total / (count*5)
+                change_global_variable = { name = riseandfall_avg_total divide = global_var:riseandfall_ruler_count }
+                change_global_variable = { name = riseandfall_avg_total divide = 5 }
+
+            }
+        }
+    }
+
+    ########################################
+    # 1) RULER STATS
+    # Each stat contributes relative to a fixed baseline of 10.
+    # Per-stat contribution = clamp(stat - 10, -6, +6)
+    # Total stats component is the sum of Diplomacy/Martial/Stewardship/Intrigue/Learning,
+    # then clamped to -30..+30.
+    set_variable = { name = riseandfall_rs_stats_component value = 0 }
+
+    # If ruler is under a regular regency, save the active diarch scope so we can read the regent's stats.
+    # Puppet regencies use the ruler's own stats for realm stability calculations.
+    if = {
+        limit = { has_diarchy_type = regency }
+        diarch = { save_scope_as = diarch }
+        add_character_flag = rf_rs_use_diarch_stats
+    }
+    else_if = {
+        limit = { has_character_flag = rf_rs_use_diarch_stats }
+        remove_character_flag = rf_rs_use_diarch_stats
+    }
+
+    # Helper macro-like repeated block for each stat: compute tmp_add = source_stat - 10,
+    # clamp to -6..+6, then add to the total.
+    # Diplomacy
+    if = { limit = { has_character_flag = rf_rs_use_diarch_stats }
+        set_variable = { name = tmp_add value = scope:diarch.diplomacy }
+    }
+    else = { set_variable = { name = tmp_add value = diplomacy } }
+    change_variable = { name = tmp_add add = -10 }
+    clamp_variable = { name = tmp_add min = -6 max = 6 }
+    change_variable = { name = riseandfall_rs_stats_component add = var:tmp_add }
+
+    # Martial
+    if = { limit = { has_character_flag = rf_rs_use_diarch_stats }
+        set_variable = { name = tmp_add value = scope:diarch.martial }
+    }
+    else = { set_variable = { name = tmp_add value = martial } }
+    change_variable = { name = tmp_add add = -10 }
+    clamp_variable = { name = tmp_add min = -6 max = 6 }
+    change_variable = { name = riseandfall_rs_stats_component add = var:tmp_add }
+
+    # Stewardship
+    if = { limit = { has_character_flag = rf_rs_use_diarch_stats }
+        set_variable = { name = tmp_add value = scope:diarch.stewardship }
+    }
+    else = { set_variable = { name = tmp_add value = stewardship } }
+    change_variable = { name = tmp_add add = -10 }
+    clamp_variable = { name = tmp_add min = -6 max = 6 }
+    change_variable = { name = riseandfall_rs_stats_component add = var:tmp_add }
+
+    # Intrigue
+    if = { limit = { has_character_flag = rf_rs_use_diarch_stats }
+        set_variable = { name = tmp_add value = scope:diarch.intrigue }
+    }
+    else = { set_variable = { name = tmp_add value = intrigue } }
+    change_variable = { name = tmp_add add = -10 }
+    clamp_variable = { name = tmp_add min = -6 max = 6 }
+    change_variable = { name = riseandfall_rs_stats_component add = var:tmp_add }
+
+    # Learning
+    if = { limit = { has_character_flag = rf_rs_use_diarch_stats }
+        set_variable = { name = tmp_add value = scope:diarch.learning }
+    }
+    else = { set_variable = { name = tmp_add value = learning } }
+    change_variable = { name = tmp_add add = -10 }
+    clamp_variable = { name = tmp_add min = -6 max = 6 }
+    change_variable = { name = riseandfall_rs_stats_component add = var:tmp_add }
+
+    # Clamp stats component to -30..+30 (sum of five per-stat ranges centered at 0)
+    clamp_variable = { name = riseandfall_rs_stats_component min = -30 max = 30 }
+
+
+
+
+
+    ########################################
+    # 2) LEGITIMACY (additive component -20..+15)
+    # Legitimacy (piety/influence/celestial) adds directly to the score.
+    # No legitimacy = -20 penalty; full legitimacy = +15 bonus.
+    set_variable = { name = riseandfall_rs_legitimacy_component value = 0 }
+
+    # Theocracy uses piety_level (0..5). Other governments with legitimacy use
+    # raw legitimacy progress against the vanilla max for their legitimacy system.
+    # That keeps the mod's output in the same -20..+15 band, but scales smoothly
+    # across different tiers/eras instead of snapping at legitimacy-level breakpoints.
+    if = {
+        limit = { has_government = theocracy_government }
+        set_variable = { name = tmp_piety value = piety_level }
+        if = { limit = { var:tmp_piety = 0 } set_variable = { name = tmp_piety_mapped value = -20 } }
+        else_if = { limit = { var:tmp_piety = 1 } set_variable = { name = tmp_piety_mapped value = -12 } }
+        else_if = { limit = { var:tmp_piety = 2 } set_variable = { name = tmp_piety_mapped value = -4 } }
+        else_if = { limit = { var:tmp_piety = 3 } set_variable = { name = tmp_piety_mapped value = 4 } }
+        else_if = { limit = { var:tmp_piety = 4 } set_variable = { name = tmp_piety_mapped value = 10 } }
+        else = { set_variable = { name = tmp_piety_mapped value = 15 } }
+        set_variable = { name = riseandfall_rs_legitimacy_component value = var:tmp_piety_mapped }
+    }
+    else = {
+        if = {
+            limit = { has_legitimacy = yes }
+            set_variable = { name = tmp_leg_current value = legitimacy }
+            if = {
+                limit = { government_has_flag = government_is_mandala }
+                set_variable = { name = tmp_leg_max value = mandala_legitimacy_max }
+            }
+            else_if = {
+                limit = { has_government = celestial_government }
+                set_variable = { name = tmp_leg_max value = mandate_legitimacy_max }
+            }
+            else = {
+                set_variable = { name = tmp_leg_max value = legitimacy_max }
+            }
+
+            if = {
+                limit = { var:tmp_leg_max > 0 }
+                set_variable = { name = tmp_leg_pct value = var:tmp_leg_current }
+                change_variable = { name = tmp_leg_pct divide = var:tmp_leg_max }
+                change_variable = { name = tmp_leg_pct multiply = 100 }
+            }
+            else = {
+                set_variable = { name = tmp_leg_pct value = 0 }
+            }
+
+            clamp_variable = { name = tmp_leg_pct min = 0 max = 100 }
+            set_variable = { name = riseandfall_rs_legitimacy_component value = var:tmp_leg_pct }
+            change_variable = { name = riseandfall_rs_legitimacy_component multiply = 0.35 }
+            change_variable = { name = riseandfall_rs_legitimacy_component add = -20 }
+            round_variable = { name = riseandfall_rs_legitimacy_component nearest = 1 }
+        }
+        else = {
+            # No legitimacy mechanic available; fall back to influence_level (0..6)
+            if = {
+                limit = { influence_level >= 0 }
+                set_variable = { name = tmp_inf value = influence_level }
+                if = { limit = { var:tmp_inf = 0 } set_variable = { name = tmp_inf_mapped value = -20 } }
+                else_if = { limit = { var:tmp_inf = 1 } set_variable = { name = tmp_inf_mapped value = -14 } }
+                else_if = { limit = { var:tmp_inf = 2 } set_variable = { name = tmp_inf_mapped value = -7 } }
+                else_if = { limit = { var:tmp_inf = 3 } set_variable = { name = tmp_inf_mapped value = 0 } }
+                else_if = { limit = { var:tmp_inf = 4 } set_variable = { name = tmp_inf_mapped value = 7 } }
+                else_if = { limit = { var:tmp_inf = 5 } set_variable = { name = tmp_inf_mapped value = 13 } }
+                else_if = { limit = { var:tmp_inf = 6 } set_variable = { name = tmp_inf_mapped value = 15 } }
+                else = { set_variable = { name = tmp_inf_mapped value = 0 } }
+                set_variable = { name = riseandfall_rs_legitimacy_component value = var:tmp_inf_mapped }
+            }
+        }
+    }
+
+    ########################################
+    # 3) VASSAL RELATIONS (-30..+30)
+    # Now we compute the average vassal opinion including negatives, map -100..+100 -> -30..+30
+    set_variable = { name = riseandfall_rs_vassals_component value = 0 }
+    # Prepare accumulators - count vassals we actually process and sum their opinions (including negatives)
+    set_variable = { name = tmp_vassal_count value = 0 }
+    set_variable = { name = tmp_opinion_sum value = 0 }
+
+    # Save ruler scope first so vassals can modify the ruler's variables
+    save_scope_as = ruler
+
+    every_vassal = {
+        # For each vassal: save their opinion of the liege and add to the running sum.
+        # Powerful vassals count double (both in numerator and denominator) so their
+        # opinion has greater weight.
+        if = {
+            limit = { save_temporary_opinion_value_as = { name = tmp_vassal_opinion target = liege } }
+            # If this vassal is powerful, add opinion twice and increment count by 2
+            if = {
+                limit = { is_powerful_vassal = yes }
+                # prepare doubled opinion in a tmp variable in vassal scope
+                # powerful vassal: count twice and add their opinion twice to the sum
+                scope:ruler = { change_variable = { name = tmp_vassal_count add = 2 } }
+                scope:ruler = { change_variable = { name = tmp_opinion_sum add = scope:tmp_vassal_opinion } }
+                scope:ruler = { change_variable = { name = tmp_opinion_sum add = scope:tmp_vassal_opinion } }
+            }
+            else = {
+                # Normal vassal: add opinion once and increment count by 1
+                scope:ruler = { change_variable = { name = tmp_vassal_count add = 1 } }
+                scope:ruler = { change_variable = { name = tmp_opinion_sum add = scope:tmp_vassal_opinion } }
+            }
+        }
+    }
+
+    # Compute average (if there are vassals) and map to -30..+30
+    set_variable = { name = tmp_avg_opinion value = 0 }
+    if = {
+        limit = { var:tmp_vassal_count > 0 }
+        set_variable = { name = tmp_avg_opinion value = var:tmp_opinion_sum }
+        change_variable = { name = tmp_avg_opinion divide = var:tmp_vassal_count }
+    }
+    else = {
+        # No vassals -> neutral opinion
+        set_variable = { name = tmp_avg_opinion value = 0 }
+    }
+
+    # Map -100..+100 to -30..+30 by scaling: value * 30 / 100 (implemented as *30 / 100)
+    # Noble relations were the primary driver of medieval stability; range raised from +-20 to +-30.
+    # This makes an average opinion of -68 -> approx -20, +80 -> approx +24
+    # Use integer math: multiply first then divide to preserve precision.
+    change_variable = { name = tmp_avg_opinion multiply = 30 }
+    change_variable = { name = tmp_avg_opinion divide = 100 }
+    # Round the scaled value to keep the component integer
+    round_variable = { name = tmp_avg_opinion nearest = 1 }
+    set_variable = { name = riseandfall_rs_vassals_component value = var:tmp_avg_opinion }
+
+    clamp_variable = { name = riseandfall_rs_vassals_component min = -30 max = 30 }
+
+    ########################################
+    # 3.6) PUPPET REGENCY TRACKING & STABILITY BONUS
+    # Tracks how long a puppet_regency has been active and manages the
+    # puppet stability bonus (riseandfall_rs_puppet_stability_bonus, -35..35).
+    # The pool starts from the puppet master's opening stat edge vs the world
+    # average, then regenerates or decays yearly like a stability mana reserve.
+    if = { limit = { NOT = { has_variable = riseandfall_puppet_regency_years } } set_variable = { name = riseandfall_puppet_regency_years value = 0 } }
+    if = { limit = { has_diarchy_type = puppet_regency } change_variable = { name = riseandfall_puppet_regency_years add = 1 } }
+    else = { if = { limit = { var:riseandfall_puppet_regency_years > 0 } change_variable = { name = riseandfall_puppet_regency_years add = -1 } } }
+
+    # Puppet regencies do not use the normal regency stat source above, so save the
+    # active puppet master explicitly before reading stats for the mana reserve.
+    if = {
+        limit = {
+            has_diarchy_type = puppet_regency
+            has_active_diarchy = yes
+            exists = diarch
+        }
+        diarch = { save_scope_as = rf_puppet_stability_diarch }
+    }
+
+    # Initialize puppet stability bonus from the starting puppet master's average stats.
+    # Only set once per regency lifecycle; later years only regen or decay it.
+    if = {
+        limit = {
+            has_diarchy_type = puppet_regency
+            has_active_diarchy = yes
+            exists = scope:rf_puppet_stability_diarch
+            NOT = { has_variable = riseandfall_rs_puppet_stability_bonus }
+        }
+        # Compute the puppet master's average across all five stats
+        set_variable = { name = tmp_pm_start_sum value = scope:rf_puppet_stability_diarch.diplomacy }
+        change_variable = { name = tmp_pm_start_sum add = scope:rf_puppet_stability_diarch.martial }
+        change_variable = { name = tmp_pm_start_sum add = scope:rf_puppet_stability_diarch.stewardship }
+        change_variable = { name = tmp_pm_start_sum add = scope:rf_puppet_stability_diarch.intrigue }
+        change_variable = { name = tmp_pm_start_sum add = scope:rf_puppet_stability_diarch.learning }
+        change_variable = { name = tmp_pm_start_sum divide = 5 }
+
+        # Compute delta vs precomputed world five-stat average (riseandfall_avg_total)
+        set_variable = { name = tmp_pm_start_baseline value = global_var:riseandfall_avg_total }
+        change_variable = { name = tmp_pm_start_baseline multiply = -1 }
+        change_variable = { name = tmp_pm_start_sum add = var:tmp_pm_start_baseline }
+        set_variable = { name = tmp_pm_start_delta value = var:tmp_pm_start_sum }
+
+        # Convert the opening stat edge into starting stability mana.
+        set_variable = { name = tmp_pm_start_bonus value = var:tmp_pm_start_delta }
+        change_variable = { name = tmp_pm_start_bonus multiply = 2 }
+        clamp_variable = { name = tmp_pm_start_bonus min = -25 max = 25 }
+        round_variable = { name = tmp_pm_start_bonus nearest = 1 }
+
+        set_variable = { name = riseandfall_rs_puppet_stability_bonus value = var:tmp_pm_start_bonus }
+        clamp_variable = { name = riseandfall_rs_puppet_stability_bonus min = -35 max = 35 }
+        round_variable = { name = riseandfall_rs_puppet_stability_bonus nearest = 1 }
+        set_variable = { name = tmp_pm_skip_yearly_drift value = 1 }
+
+        remove_variable = tmp_pm_start_sum
+        remove_variable = tmp_pm_start_baseline
+        remove_variable = tmp_pm_start_delta
+        remove_variable = tmp_pm_start_bonus
+    }
+
+    # Yearly mana flow: better puppet masters rebuild stability, weak ones bleed it away.
+    if = {
+        limit = {
+            has_diarchy_type = puppet_regency
+            has_active_diarchy = yes
+            exists = scope:rf_puppet_stability_diarch
+            has_variable = riseandfall_rs_puppet_stability_bonus
+            NOT = { has_variable = tmp_pm_skip_yearly_drift }
+        }
+        # Sum all five stats for the puppet master and compute the average
+        set_variable = { name = tmp_pm_stat_sum value = scope:rf_puppet_stability_diarch.diplomacy }
+        change_variable = { name = tmp_pm_stat_sum add = scope:rf_puppet_stability_diarch.martial }
+        change_variable = { name = tmp_pm_stat_sum add = scope:rf_puppet_stability_diarch.stewardship }
+        change_variable = { name = tmp_pm_stat_sum add = scope:rf_puppet_stability_diarch.intrigue }
+        change_variable = { name = tmp_pm_stat_sum add = scope:rf_puppet_stability_diarch.learning }
+        # Convert sum -> average (integer division)
+        change_variable = { name = tmp_pm_stat_sum divide = 5 }
+
+        # Subtract precomputed world-average-of-five-stats (riseandfall_avg_total)
+        set_variable = { name = tmp_pm_avg_baseline value = global_var:riseandfall_avg_total }
+        change_variable = { name = tmp_pm_avg_baseline multiply = -1 }
+        change_variable = { name = tmp_pm_stat_sum add = var:tmp_pm_avg_baseline }
+        # tmp_pm_stat_sum now holds (puppet_master_avg - world_avg)
+        set_variable = { name = tmp_pm_stat_delta value = var:tmp_pm_stat_sum }
+
+        # Convert the average stat edge directly into yearly mana gain/loss.
+        set_variable = { name = tmp_pm_drift value = var:tmp_pm_stat_delta }
+        # Personality nudges make puppet masters feel like actors, not only stat sticks.
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = diligent } } change_variable = { name = tmp_pm_drift add = 1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = patient } } change_variable = { name = tmp_pm_drift add = 1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = just } } change_variable = { name = tmp_pm_drift add = 1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = temperate } } change_variable = { name = tmp_pm_drift add = 1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = calm } } change_variable = { name = tmp_pm_drift add = 1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = greedy } } change_variable = { name = tmp_pm_drift add = -1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = deceitful } } change_variable = { name = tmp_pm_drift add = -1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = callous } } change_variable = { name = tmp_pm_drift add = -1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = arbitrary } } change_variable = { name = tmp_pm_drift add = -1 } }
+        if = { limit = { scope:rf_puppet_stability_diarch = { has_trait = ambitious } } change_variable = { name = tmp_pm_drift add = -1 } }
+        clamp_variable = { name = tmp_pm_drift min = -5 max = 5 }
+        round_variable = { name = tmp_pm_drift nearest = 1 }
+
+        change_variable = { name = riseandfall_rs_puppet_stability_bonus add = var:tmp_pm_drift }
+        clamp_variable = { name = riseandfall_rs_puppet_stability_bonus min = -35 max = 35 }
+        round_variable = { name = riseandfall_rs_puppet_stability_bonus nearest = 1 }
+
+        remove_variable = tmp_pm_stat_sum
+        remove_variable = tmp_pm_avg_baseline
+        remove_variable = tmp_pm_stat_delta
+        remove_variable = tmp_pm_drift
+    }
+    else_if = {
+        # Puppet regency ended — remove the bonus so it is no longer added to the target
+        limit = {
+            NOT = { has_diarchy_type = puppet_regency }
+            has_variable = riseandfall_rs_puppet_stability_bonus
+        }
+        remove_variable = riseandfall_rs_puppet_stability_bonus
+    }
+
+    if = {
+        limit = { has_variable = tmp_pm_skip_yearly_drift }
+        remove_variable = tmp_pm_skip_yearly_drift
+    }
+
+    ########################################
+    # 3.7) DYNAMIC REALM FACTORS
+    # Story-mode pressure now feeds stability directly instead of producing fracture vars.
+    set_variable = { name = riseandfall_rs_realm_size_component value = 0 }
+    set_variable = { name = riseandfall_rs_total_development value = 0 }
+    set_variable = { name = riseandfall_rs_average_development value = 0 }
+    set_variable = { name = riseandfall_rs_development_pct value = 0 }
+    set_variable = { name = riseandfall_rs_culture_faith_component value = 0 }
+    set_variable = { name = riseandfall_rs_epidemic_component value = 0 }
+    set_variable = { name = riseandfall_rs_partition_component value = 0 }
+    set_variable = { name = riseandfall_rs_succession_component value = 0 }
+    set_variable = { name = riseandfall_rs_strong_vassal_count value = 0 }
+    set_variable = { name = riseandfall_rs_foreign_culture_county_pct value = 0 }
+    set_variable = { name = riseandfall_rs_foreign_faith_county_pct value = 0 }
+    set_variable = { name = riseandfall_rs_epidemic_province_pct value = 0 }
+    set_variable = { name = tmp_story_strong_vassal_component_target value = 0 }
+
+    if = {
+        limit = {
+            is_independent_ruler = yes
+        }
+
+        # Realm size now directly shifts stability instead of only increasing collapse pressure.
+        set_variable = { name = tmp_story_world_total value = global_var:riseandfall_world_total }
+        if = { limit = { var:tmp_story_world_total < 1 } set_variable = { name = tmp_story_world_total value = 1 } }
+        set_variable = { name = tmp_rs_world_development_total value = global_var:riseandfall_world_total_development }
+        if = { limit = { var:tmp_rs_world_development_total < 1 } set_variable = { name = tmp_rs_world_development_total value = 1 } }
+
+        # Continuous proportional scaling: lose 1 stability for every 1% of the world controlled.
+        # This keeps the penalty fully dynamic instead of using tiered thresholds.
+        # e.g. 7% -> -7, 12% -> -12, 50% -> -50
+        set_variable = { name = tmp_rs_realm_pct value = realm_size }
+        change_variable = { name = tmp_rs_realm_pct multiply = 100 }
+        change_variable = { name = tmp_rs_realm_pct divide = var:tmp_story_world_total }
+        round_variable = { name = tmp_rs_realm_pct nearest = 1 }
+        set_variable = { name = riseandfall_rs_realm_size_component value = var:tmp_rs_realm_pct }
+        change_variable = { name = riseandfall_rs_realm_size_component multiply = -1 }
+        clamp_variable = { name = riseandfall_rs_realm_size_component min = -15 max = 0 }
+
+        # Development is capacity and prize value for Story Mode, not a stability bonus.
+        # Keep the metrics available so collapse targeting can distinguish dense powers
+        # from large low-development frontier realms.
+        save_scope_as = ruler
+        every_realm_county = {
+            scope:ruler = {
+                change_variable = { name = riseandfall_rs_total_development add = prev.development_level }
+            }
+        }
+        set_variable = { name = riseandfall_rs_average_development value = var:riseandfall_rs_total_development }
+        if = { limit = { realm_size > 0 } change_variable = { name = riseandfall_rs_average_development divide = realm_size } }
+        round_variable = { name = riseandfall_rs_average_development nearest = 1 }
+        set_variable = { name = riseandfall_rs_development_pct value = var:riseandfall_rs_total_development }
+        change_variable = { name = riseandfall_rs_development_pct multiply = 100 }
+        change_variable = { name = riseandfall_rs_development_pct divide = var:tmp_rs_world_development_total }
+        round_variable = { name = riseandfall_rs_development_pct nearest = 1 }
+
+        # Strong-vassal pressure is now a direct stability component from +10 to -30.
+        # Allied vassals should bolster the liege's effective military strength and
+        # not be counted as hostile strong vassals. Implement a two-pass approach:
+        # 1) Aggregate allied vassal strength into an effective liege strength.
+        # 2) Compute the threshold from the effective strength and count only
+        #    non-allied vassals that exceed it.
+        set_variable = { name = tmp_story_effective_liege_strength value = max_military_strength }
+        set_variable = { name = tmp_story_strong_vassals value = 0 }
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                primary_title.tier >= tier_county
+            }
+            save_scope_as = tmp_current_vassal
+            if = {
+                limit = {
+                    is_allied_to = scope:ruler
+                }
+                # allied vassals add their strength to the liege's effective strength
+                scope:ruler = { change_variable = { name = tmp_story_effective_liege_strength add = scope:tmp_current_vassal.max_military_strength } }
+            }
+        }
+
+        # Threshold is a fraction of the effective liege strength (including allied vassals)
+        set_variable = { name = tmp_story_strong_vassal_threshold value = var:tmp_story_effective_liege_strength }
+        change_variable = { name = tmp_story_strong_vassal_threshold multiply = 0.35 }
+
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                primary_title.tier >= tier_county
+            }
+            if = {
+                limit = {
+                    max_military_strength >= scope:ruler.var:tmp_story_strong_vassal_threshold
+                    NOT = { is_allied_to = scope:ruler }
+                }
+                scope:ruler = { change_variable = { name = tmp_story_strong_vassals add = 1 } }
+            }
+        }
+
+        remove_variable = tmp_story_effective_liege_strength
+        remove_variable = tmp_story_strong_vassal_threshold
+
+        set_variable = { name = riseandfall_rs_strong_vassal_count value = var:tmp_story_strong_vassals }
+        if = {
+            limit = { var:tmp_story_strong_vassals = 0 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = 10 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 1 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = 0 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 2 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -10 }
+        }
+        else_if = {
+            limit = { var:tmp_story_strong_vassals = 3 }
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -20 }
+        }
+        else = {
+            set_variable = { name = tmp_story_strong_vassal_component_target value = -30 }
+        }
+
+        if = {
+            limit = { has_partition_succession_realm_law_trigger = yes }
+            # Partition law provides short-term stability: children have guaranteed shares so they don't
+            # war with the ruler during their lifetime. The realm fragments automatically on succession,
+            # so no additional penalty is needed here — the fragmentation is the consequence.
+            set_variable = { name = riseandfall_rs_partition_component value = 10 }
+        }
+
+        remove_variable = tmp_story_world_total
+        remove_variable = tmp_rs_world_development_total
+        remove_variable = tmp_rs_realm_pct
+        remove_variable = tmp_story_strong_vassal_threshold
+        remove_variable = tmp_story_strong_vassals
+    }
+
+    # Culture/faith county calculation: NOT gated on duchy tier.
+    # Any independent ruler holding foreign-culture/faith territory should feel the penalty,
+    # including small county-tier independent rulers who were previously excluded.
+    if = {
+        limit = {
+        
+            is_independent_ruler = yes
+        }
+        set_variable = { name = tmp_story_realm_counties value = 0 }
+        set_variable = { name = tmp_story_foreign_culture_counties value = 0 }
+        set_variable = { name = tmp_story_foreign_faith_counties value = 0 }
+        set_variable = { name = tmp_story_realm_provinces value = 0 }
+        set_variable = { name = tmp_story_epidemic_provinces value = 0 }
+        set_variable = { name = tmp_story_foreign_culture_county_pct value = 0 }
+        set_variable = { name = tmp_story_foreign_faith_county_pct value = 0 }
+        set_variable = { name = tmp_story_epidemic_province_pct value = 0 }
+        set_variable = { name = tmp_story_nonapproved_pct value = 0 }
+        every_realm_county = {
+            save_scope_as = story_mode_county
+            scope:ruler = { change_variable = { name = tmp_story_realm_counties add = 1 } }
+
+            if = {
+                limit = { culture = scope:ruler.culture }
+            }
+            else_if = {
+                limit = {
+                    culture = {
+                        cultural_acceptance = {
+                            target = scope:ruler.culture
+                            value >= 70
+                        }
+                    }
+                }
+            }
+            else_if = {
+                limit = {
+                    exists = holder
+                    holder = { culture = scope:story_mode_county.culture }
+                }
+            }
+            else = {
+                scope:ruler = { change_variable = { name = tmp_story_foreign_culture_counties add = 1 } }
+            }
+
+            if = {
+                limit = { faith = scope:ruler.faith }
+            }
+            else_if = {
+                limit = {
+                    faith = {
+                        faith_hostility_level = {
+                            target = scope:ruler.faith
+                            value <= faith_astray_level
+                        }
+                    }
+                }
+            }
+            else_if = {
+                limit = {
+                    exists = holder
+                    holder = { faith = scope:story_mode_county.faith }
+                }
+            }
+            else = {
+                scope:ruler = { change_variable = { name = tmp_story_foreign_faith_counties add = 1 } }
+            }
+
+            every_county_province = {
+                scope:ruler = { change_variable = { name = tmp_story_realm_provinces add = 1 } }
+                if = {
+                    limit = { any_province_epidemic = {} }
+                    scope:ruler = { change_variable = { name = tmp_story_epidemic_provinces add = 1 } }
+                }
+            }
+
+            clear_saved_scope = story_mode_county
+        }
+
+        if = {
+            limit = { var:tmp_story_realm_counties > 0 }
+            set_variable = { name = tmp_story_foreign_culture_county_pct value = var:tmp_story_foreign_culture_counties }
+            change_variable = { name = tmp_story_foreign_culture_county_pct multiply = 100 }
+            change_variable = { name = tmp_story_foreign_culture_county_pct divide = var:tmp_story_realm_counties }
+            round_variable = { name = tmp_story_foreign_culture_county_pct nearest = 1 }
+
+            set_variable = { name = tmp_story_foreign_faith_county_pct value = var:tmp_story_foreign_faith_counties }
+            change_variable = { name = tmp_story_foreign_faith_county_pct multiply = 100 }
+            change_variable = { name = tmp_story_foreign_faith_county_pct divide = var:tmp_story_realm_counties }
+            round_variable = { name = tmp_story_foreign_faith_county_pct nearest = 1 }
+
+            set_variable = { name = riseandfall_rs_foreign_culture_county_pct value = var:tmp_story_foreign_culture_county_pct }
+            set_variable = { name = riseandfall_rs_foreign_faith_county_pct value = var:tmp_story_foreign_faith_county_pct }
+
+            if = { limit = { var:tmp_story_realm_provinces < 1 } set_variable = { name = tmp_story_realm_provinces value = 1 } }
+            set_variable = { name = tmp_story_epidemic_province_pct value = var:tmp_story_epidemic_provinces }
+            change_variable = { name = tmp_story_epidemic_province_pct multiply = 100 }
+            change_variable = { name = tmp_story_epidemic_province_pct divide = var:tmp_story_realm_provinces }
+            round_variable = { name = tmp_story_epidemic_province_pct nearest = 1 }
+            set_variable = { name = riseandfall_rs_epidemic_province_pct value = var:tmp_story_epidemic_province_pct }
+
+            # Epidemic pressure scales with the share of affected realm provinces.
+            # 25% affected -> -10 stability, 50% -> -20, 100% -> -40.
+            set_variable = { name = riseandfall_rs_epidemic_component value = var:tmp_story_epidemic_province_pct }
+            change_variable = { name = riseandfall_rs_epidemic_component multiply = -40 }
+            change_variable = { name = riseandfall_rs_epidemic_component divide = 100 }
+            round_variable = { name = riseandfall_rs_epidemic_component nearest = 1 }
+            clamp_variable = { name = riseandfall_rs_epidemic_component min = -40 max = 0 }
+
+            set_variable = { name = tmp_story_nonapproved_pct value = var:tmp_story_foreign_culture_county_pct }
+            change_variable = { name = tmp_story_nonapproved_pct add = var:tmp_story_foreign_faith_county_pct }
+            change_variable = { name = tmp_story_nonapproved_pct divide = 2 }
+
+            # Continuous homogeneity/diversity component: map 0-100% foreign -> +15..-30
+            # Homogeneous realms can now earn a stronger stability bonus while diversity penalties stay capped.
+            set_variable = { name = riseandfall_rs_culture_faith_component value = var:tmp_story_nonapproved_pct }
+            change_variable = { name = riseandfall_rs_culture_faith_component multiply = -45 }
+            change_variable = { name = riseandfall_rs_culture_faith_component divide = 100 }
+            change_variable = { name = riseandfall_rs_culture_faith_component add = 15 }
+            round_variable = { name = riseandfall_rs_culture_faith_component nearest = 1 }
+            clamp_variable = { name = riseandfall_rs_culture_faith_component min = -30 max = 15 }
+        }
+
+        remove_variable = tmp_story_realm_counties
+        remove_variable = tmp_story_foreign_culture_counties
+        remove_variable = tmp_story_foreign_faith_counties
+        remove_variable = tmp_story_realm_provinces
+        remove_variable = tmp_story_epidemic_provinces
+        remove_variable = tmp_story_foreign_culture_county_pct
+        remove_variable = tmp_story_foreign_faith_county_pct
+        remove_variable = tmp_story_epidemic_province_pct
+        remove_variable = tmp_story_nonapproved_pct
+    }
+
+    # Strong-vassal balance now drifts toward the actual realm state over five yearly pulses
+    # instead of snapping immediately after a single battle or temporary war swing.
+    if = {
+        limit = { NOT = { has_variable = riseandfall_rs_strong_vassal_component } }
+        set_variable = { name = riseandfall_rs_strong_vassal_component value = var:tmp_story_strong_vassal_component_target }
+    }
+    else = {
+        set_variable = { name = tmp_rs_strong_vassal_delta value = var:tmp_story_strong_vassal_component_target }
+        set_variable = { name = tmp_rs_strong_vassal_current value = var:riseandfall_rs_strong_vassal_component }
+        change_variable = { name = tmp_rs_strong_vassal_current multiply = -1 }
+        change_variable = { name = tmp_rs_strong_vassal_delta add = var:tmp_rs_strong_vassal_current }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta >= 0 }
+            set_variable = { name = tmp_rs_strong_vassal_delta_abs value = var:tmp_rs_strong_vassal_delta }
+        }
+        else = {
+            set_variable = { name = tmp_rs_strong_vassal_delta_abs value = var:tmp_rs_strong_vassal_delta }
+            change_variable = { name = tmp_rs_strong_vassal_delta_abs multiply = -1 }
+        }
+
+        set_variable = { name = tmp_rs_strong_vassal_step_numer value = var:tmp_rs_strong_vassal_delta_abs }
+        change_variable = { name = tmp_rs_strong_vassal_step_numer add = 4 }
+        set_variable = { name = tmp_rs_strong_vassal_step value = var:tmp_rs_strong_vassal_step_numer }
+        change_variable = { name = tmp_rs_strong_vassal_step divide = 5 }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta_abs = 0 }
+            set_variable = { name = tmp_rs_strong_vassal_step value = 0 }
+        }
+        else = {
+            if = { limit = { var:tmp_rs_strong_vassal_step < 1 } set_variable = { name = tmp_rs_strong_vassal_step value = 1 } }
+        }
+
+        if = {
+            limit = { var:tmp_rs_strong_vassal_delta > 0 }
+            change_variable = { name = riseandfall_rs_strong_vassal_component add = var:tmp_rs_strong_vassal_step }
+        }
+        else_if = {
+            limit = { var:tmp_rs_strong_vassal_delta < 0 }
+            set_variable = { name = tmp_rs_strong_vassal_step_neg value = var:tmp_rs_strong_vassal_step }
+            change_variable = { name = tmp_rs_strong_vassal_step_neg multiply = -1 }
+            change_variable = { name = riseandfall_rs_strong_vassal_component add = var:tmp_rs_strong_vassal_step_neg }
+        }
+    }
+
+    clamp_variable = { name = riseandfall_rs_strong_vassal_component min = -30 max = 10 }
+
+    if = {
+        limit = {
+            has_variable = riseandfall_rs_succession_shock
+        }
+        if = {
+            limit = { var:riseandfall_rs_succession_shock < 1 }
+            remove_variable = riseandfall_rs_succession_shock
+            set_variable = { name = riseandfall_rs_succession_component value = 0 }
+        }
+        else = {
+            set_variable = { name = riseandfall_rs_succession_component value = var:riseandfall_rs_succession_shock }
+            change_variable = { name = riseandfall_rs_succession_component multiply = -1 }
+            clamp_variable = { name = riseandfall_rs_succession_component min = -50 max = 50 }
+
+            # Decay the stored shock toward zero by 5% yearly, with a minimum step of 1.
+            set_variable = { name = tmp_rs_succession_decay value = var:riseandfall_rs_succession_shock }
+            if = { limit = { var:tmp_rs_succession_decay < 0 } change_variable = { name = tmp_rs_succession_decay multiply = -1 } }
+            change_variable = { name = tmp_rs_succession_decay add = 19 }
+            change_variable = { name = tmp_rs_succession_decay divide = 20 }
+            if = { limit = { var:tmp_rs_succession_decay < 1 } set_variable = { name = tmp_rs_succession_decay value = 1 } }
+            set_variable = { name = tmp_rs_succession_decay_neg value = var:tmp_rs_succession_decay }
+            if = { limit = { var:riseandfall_rs_succession_shock > 0 } change_variable = { name = tmp_rs_succession_decay_neg multiply = -1 } }
+            change_variable = { name = riseandfall_rs_succession_shock add = var:tmp_rs_succession_decay_neg }
+            if = {
+                limit = { var:riseandfall_rs_succession_shock <= 0 }
+                remove_variable = riseandfall_rs_succession_shock
+            }
+            else = {
+                clamp_variable = { name = riseandfall_rs_succession_shock min = 0 max = 50 }
+            }
+        }
+    }
+
+    riseandfall_update_successor_realm_grace_se = yes
+    riseandfall_apply_dynamic_story_pressure_se = yes
+    riseandfall_calculate_legitimate_house_component_se = yes
+
+    ########################################
+    # 4) Sum components into final 0..100 TARGET score (don't overwrite the persistent current score yet)
+    # Ensure component vars exist (safe defaults) to avoid unset-variable engine errors
+    if = { limit = { NOT = { has_variable = riseandfall_rs_stats_component } } set_variable = { name = riseandfall_rs_stats_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_legitimacy_component } } set_variable = { name = riseandfall_rs_legitimacy_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_vassals_component } } set_variable = { name = riseandfall_rs_vassals_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_realm_size_component } } set_variable = { name = riseandfall_rs_realm_size_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_strong_vassal_component } } set_variable = { name = riseandfall_rs_strong_vassal_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_culture_faith_component } } set_variable = { name = riseandfall_rs_culture_faith_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_epidemic_component } } set_variable = { name = riseandfall_rs_epidemic_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_partition_component } } set_variable = { name = riseandfall_rs_partition_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_succession_component } } set_variable = { name = riseandfall_rs_succession_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_legitimate_house_component } } set_variable = { name = riseandfall_rs_legitimate_house_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_rs_story_pressure_component } } set_variable = { name = riseandfall_rs_story_pressure_component value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_story_protection } } set_variable = { name = riseandfall_story_protection value = 0 } }
+    if = { limit = { NOT = { has_variable = riseandfall_story_blob_pressure } } set_variable = { name = riseandfall_story_blob_pressure value = 0 } }
+    # Start from 50 as the equilibrium midpoint; components shift toward 0 or 100
+    set_variable = { name = tmp_target_score value = 50 }
+    # Stats component contributes directly in range -30..+30 (already clamped above)
+    set_variable = { name = tmp_stats_scaled value = var:riseandfall_rs_stats_component }
+    change_variable = { name = tmp_target_score add = var:tmp_stats_scaled }
+    # Vassal relations are now 50% of calculation; add scaled vassal component mapped to -50..+50
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_vassals_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_realm_size_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_strong_vassal_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_culture_faith_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_epidemic_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_partition_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_succession_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_legitimate_house_component }
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_story_pressure_component }
+    if = {
+        limit = { has_variable = riseandfall_story_successor_grace }
+        change_variable = { name = tmp_target_score add = var:riseandfall_story_successor_grace }
+    }
+    # Story roles should protect realms through visible additive support only.
+    # Do not apply hidden Anchor/Rival/Wildcard target floors here, because they make the tooltip math impossible to reconcile.
+    # Successor grace is a visible flat bonus. Avoid a hidden target floor so the tooltip rows stay accountable.
+    # Legitimacy is additive: -20 (none) to +15 (full). Transparent on the 0-100 scale.
+    change_variable = { name = tmp_target_score add = var:riseandfall_rs_legitimacy_component }
+
+    # Puppet stability bonus: -35..+35 while a puppet_regency is active.
+    # Good puppet master stats replenish it; poor stats or exploitative actions drain it.
+    if = {
+        limit = { has_variable = riseandfall_rs_puppet_stability_bonus }
+        change_variable = { name = tmp_target_score add = var:riseandfall_rs_puppet_stability_bonus }
+    }
+
+    # Civil war adjustment applied to the TARGET score (so smoothing moves current toward
+    # the penalized target) instead of modifying the persistent current score directly.
+    # Ensure counter exists
+    if = { limit = { NOT = { has_variable = riseandfall_rs_civil_war_years } } set_variable = { name = riseandfall_rs_civil_war_years value = 0 } }
+    # Ensure sex-law penalty tooltip var exists
+    if = { limit = { NOT = { has_variable = riseandfall_realm_stability_sex_law_penalty } } set_variable = { name = riseandfall_realm_stability_sex_law_penalty value = 0 } }
+
+    if = {
+        limit = { is_independent_ruler = yes }
+        # Dynamic civil war severity based on how much of the realm is in revolt.
+        # We estimate revolt share as:
+        #   sum(sub_realm_size of direct vassals at war with liege) / ruler realm_size
+        # Tier mapping (percent rebel share):
+        #   5-20 => +1 pressure/year, 21-40 => +2, 41-60 => +3, 61-80 => +4, 81-100 => +5
+        # Pressure decays by 10%/year while not in civil war, with a minimum step of 1.
+        # Final penalty is -pressure, capped at -50.
+        save_scope_as = ruler
+        set_variable = { name = tmp_cw_realm_counties value = 1 }
+        set_variable = { name = tmp_cw_rebel_counties value = 0 }
+        set_variable = { name = tmp_cw_rebel_percent value = 0 }
+        set_variable = { name = tmp_cw_yearly_step value = 0 }
+
+        if = {
+            limit = { is_in_civil_war = yes }
+            set_variable = { name = tmp_cw_realm_counties value = realm_size }
+            if = { limit = { var:tmp_cw_realm_counties < 1 } set_variable = { name = tmp_cw_realm_counties value = 1 } }
+
+            every_vassal = {
+                limit = { is_at_war_with_liege = yes }
+                save_scope_value_as = { name = tmp_cw_vassal_sub_realm value = sub_realm_size }
+                scope:ruler = { change_variable = { name = tmp_cw_rebel_counties add = scope:tmp_cw_vassal_sub_realm } }
+            }
+
+            set_variable = { name = tmp_cw_rebel_percent value = var:tmp_cw_rebel_counties }
+            change_variable = { name = tmp_cw_rebel_percent multiply = 100 }
+            change_variable = { name = tmp_cw_rebel_percent divide = var:tmp_cw_realm_counties }
+            clamp_variable = { name = tmp_cw_rebel_percent min = 0 max = 100 }
+
+            if = { limit = { var:tmp_cw_rebel_percent >= 80 } set_variable = { name = tmp_cw_yearly_step value = 5 } }
+            else_if = { limit = { var:tmp_cw_rebel_percent >= 61 } set_variable = { name = tmp_cw_yearly_step value = 4 } }
+            else_if = { limit = { var:tmp_cw_rebel_percent >= 41 } set_variable = { name = tmp_cw_yearly_step value = 3 } }
+            else_if = { limit = { var:tmp_cw_rebel_percent >= 21 } set_variable = { name = tmp_cw_yearly_step value = 2 } }
+            else_if = { limit = { var:tmp_cw_rebel_percent >= 5 } set_variable = { name = tmp_cw_yearly_step value = 1 } }
+            else = { set_variable = { name = tmp_cw_yearly_step value = 0 } }
+
+            change_variable = { name = riseandfall_rs_civil_war_years add = var:tmp_cw_yearly_step }
+        }
+        else = {
+            # Decay the stored civil war pressure by 10% per year outside of war,
+            # but never reduce it by less than 1.
+            set_variable = { name = tmp_cw_decay value = var:riseandfall_rs_civil_war_years }
+            change_variable = { name = tmp_cw_decay divide = 10 }
+            if = { limit = { var:tmp_cw_decay < 1 } set_variable = { name = tmp_cw_decay value = 1 } }
+            set_variable = { name = tmp_cw_decay_neg value = var:tmp_cw_decay }
+            if = { limit = { var:riseandfall_rs_civil_war_years > 0 } change_variable = { name = tmp_cw_decay_neg multiply = -1 } }
+            if = { limit = { var:riseandfall_rs_civil_war_years > 0 } change_variable = { name = riseandfall_rs_civil_war_years add = var:tmp_cw_decay_neg } }
+            clamp_variable = { name = riseandfall_rs_civil_war_years min = 0 max = 50 }
+        }
+
+    # Compute cumulative penalty from weighted pressure and subtract from target score
+    set_variable = { name = tmp_cw_total value = var:riseandfall_rs_civil_war_years }
+    change_variable = { name = tmp_cw_total multiply = -1 }
+    # Cap the civil war penalty so it never goes below -50
+    clamp_variable = { name = tmp_cw_total min = -50 max = 0 }
+    change_variable = { name = tmp_target_score add = var:tmp_cw_total }
+    # Store the displayed cumulative penalty for the tooltip
+    set_variable = { name = riseandfall_realm_stability_civil_war_penalty value = var:tmp_cw_total }
+
+        # Sex vs realm-law penalty: if the ruler's sex conflicts with realm succession laws,
+        # apply a -10 penalty to the TARGET score and expose it for the tooltip.
+        # Female ruler in male-only/preference law
+        set_variable = { name = tmp_sex_penalty value = 0 }
+        if = {
+            limit = { is_female = yes has_realm_law = male_only_law }
+            set_variable = { name = tmp_sex_penalty value = -10 }
+        }
+        else_if = {
+            limit = { is_female = yes has_realm_law = male_preference_law }
+            set_variable = { name = tmp_sex_penalty value = -10 }
+        }
+        # Male ruler in female-only/preference law
+        else_if = {
+            limit = { is_male = yes has_realm_law = female_only_law }
+            set_variable = { name = tmp_sex_penalty value = -10 }
+        }
+        else_if = {
+            limit = { is_male = yes has_realm_law = female_preference_law }
+            set_variable = { name = tmp_sex_penalty value = -10 }
+        }
+
+        # Apply sex penalty to target and store for tooltip
+        change_variable = { name = tmp_target_score add = var:tmp_sex_penalty }
+        set_variable = { name = riseandfall_realm_stability_sex_law_penalty value = var:tmp_sex_penalty }
+
+
+    }
+
+    # WAR PENALTY (wins/losses change a persistent penalty)
+    # We maintain a per-character penalty that subtracts from the computed
+    # TARGET score. Losing a war adds +10 penalty, winning reduces by -10 (min 0).
+    if = { limit = { NOT = { has_variable = riseandfall_war_penalty } } set_variable = { name = riseandfall_war_penalty value = 0 } }
+    # DIFFICULTY MULTIPLIER (configured via game rule)
+    if = { limit = { NOT = { has_variable = riseandfall_rs_difficulty_multiplier } } set_variable = { name = riseandfall_rs_difficulty_multiplier value = 100 } }
+    # Map selected game rule to a penalty-curve multiplier.
+    # We scale the distance from 100 instead of scaling the whole score, so a raw 100 target stays 100.
+    if = { limit = { has_game_rule = riseandfall_realm_stability_very_unstable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 150 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_unstable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 125 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_slightly_unstable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 110 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_normal }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 100 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_slightly_stable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 90 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_stable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 75 }
+    }
+    else_if = { limit = { has_game_rule = riseandfall_realm_stability_very_stable }
+        set_variable = { name = riseandfall_rs_difficulty_multiplier value = 50 }
+    }
+    # Apply the war penalty to the target score (use a negated temp var — `-var:` is not valid in scripts)
+    set_variable = { name = tmp_war_penalty value = var:riseandfall_war_penalty }
+    change_variable = { name = tmp_war_penalty multiply = -1 }
+    change_variable = { name = tmp_target_score add = var:tmp_war_penalty }
+    # Apply difficulty game rule by scaling how far the raw target sits below 100.
+    # If the raw target is 100, it stays 100 on every setting.
+    # If the game rule is Player Only, apply only to player-controlled characters (is_ai = no).
+    # If the game rule is AI Only, apply only to AI-controlled characters (is_ai = yes).
+    # Otherwise apply to all characters (Both).
+    if = {
+        limit = { has_game_rule = riseandfall_realm_stability_difficulty_player_only is_ai = no }
+        set_variable = { name = tmp_difficulty_gap value = var:tmp_target_score }
+        change_variable = { name = tmp_difficulty_gap multiply = -1 }
+        change_variable = { name = tmp_difficulty_gap add = 100 }
+        change_variable = { name = tmp_difficulty_gap multiply = var:riseandfall_rs_difficulty_multiplier }
+        change_variable = { name = tmp_difficulty_gap divide = 100 }
+        set_variable = { name = tmp_target_score value = var:tmp_difficulty_gap }
+        change_variable = { name = tmp_target_score multiply = -1 }
+        change_variable = { name = tmp_target_score add = 100 }
+    }
+    else_if = {
+        limit = { has_game_rule = riseandfall_realm_stability_difficulty_ai_only is_ai = yes }
+        set_variable = { name = tmp_difficulty_gap value = var:tmp_target_score }
+        change_variable = { name = tmp_difficulty_gap multiply = -1 }
+        change_variable = { name = tmp_difficulty_gap add = 100 }
+        change_variable = { name = tmp_difficulty_gap multiply = var:riseandfall_rs_difficulty_multiplier }
+        change_variable = { name = tmp_difficulty_gap divide = 100 }
+        set_variable = { name = tmp_target_score value = var:tmp_difficulty_gap }
+        change_variable = { name = tmp_target_score multiply = -1 }
+        change_variable = { name = tmp_target_score add = 100 }
+    }
+    else = {
+        # Both (default) — apply to all characters
+        set_variable = { name = tmp_difficulty_gap value = var:tmp_target_score }
+        change_variable = { name = tmp_difficulty_gap multiply = -1 }
+        change_variable = { name = tmp_difficulty_gap add = 100 }
+        change_variable = { name = tmp_difficulty_gap multiply = var:riseandfall_rs_difficulty_multiplier }
+        change_variable = { name = tmp_difficulty_gap divide = 100 }
+        set_variable = { name = tmp_target_score value = var:tmp_difficulty_gap }
+        change_variable = { name = tmp_target_score multiply = -1 }
+        change_variable = { name = tmp_target_score add = 100 }
+    }
+    # Ensure we expose the difficulty multiplier for tooltip/use.
+    set_variable = { name = riseandfall_rs_difficulty_multiplier value = var:riseandfall_rs_difficulty_multiplier }
+
+    # Successor grace and Story role support are already included as visible additive rows.
+    # Keeping this section free of hidden role floors makes the visible rows add up to the stored target.
+
+    # Ensure the target stays within 0..100 after applying war penalties
+    clamp_variable = { name = tmp_target_score min = 0 max = 100 }
+    round_variable = { name = tmp_target_score nearest = 1 }
+    # Persist the (possibly penalized) target so smoothing moves the current score toward it
+    set_variable = { name = riseandfall_realm_stability_target value = var:tmp_target_score }
+
+    # Smooth the persistent current score (`riseandfall_realm_stability_score`) toward the target
+    # This runs once per year (the on_action is scheduled yearly). We compute a signed delta
+    # (target - current), convert to an absolute distance and move the current score toward
+    # the target by step = max(0, ceil(abs(delta) / 5)) (zero when already equal). We also
+    # expose the signed predicted change for UI clarity.
+
+    # Initialize months counter if missing
+    if = {
+        limit = { NOT = { has_variable = riseandfall_rs_adjust_months } }
+        set_variable = { name = riseandfall_rs_adjust_months value = 0 }
+    }
+
+    # Initialize persistent current score to target on first run
+    if = {
+        limit = { NOT = { has_variable = riseandfall_realm_stability_score } }
+        set_variable = { name = riseandfall_realm_stability_score value = var:riseandfall_realm_stability_target }
+        if = {
+            limit = {
+                has_variable = riseandfall_story_successor_grace
+                NOT = { var:riseandfall_realm_stability_score >= 55 }
+            }
+            set_variable = { name = riseandfall_realm_stability_score value = 55 }
+        }
+        # No predicted change on initialization
+        set_variable = { name = riseandfall_realm_stability_predicted_change value = 0 }
+    }
+    else = {
+        # advance month counter; this mod runs yearly so this triggers each year
+        change_variable = { name = riseandfall_rs_adjust_months add = 1 }
+        if = {
+            limit = { var:riseandfall_rs_adjust_months >= 1 }
+            # reset counter
+            set_variable = { name = riseandfall_rs_adjust_months value = 0 }
+
+            # compute signed delta = target - current
+            set_variable = { name = tmp_rs_delta value = var:riseandfall_realm_stability_target }
+            set_variable = { name = tmp_rs_current value = var:riseandfall_realm_stability_score }
+            change_variable = { name = tmp_rs_current multiply = -1 }
+            change_variable = { name = tmp_rs_delta add = var:tmp_rs_current }
+
+            # compute absolute value of delta
+            if = { limit = { var:tmp_rs_delta >= 0 } set_variable = { name = tmp_rs_delta_abs value = var:tmp_rs_delta } }
+            else = { set_variable = { name = tmp_rs_delta_abs value = var:tmp_rs_delta } change_variable = { name = tmp_rs_delta_abs multiply = -1 } }
+
+            # Asymmetric smoothing: stability collapses faster than it recovers (historically accurate).
+            # Recovering (delta > 0): slow — step = ceil(abs(delta)/7) = (abs + 6) / 7
+            # Declining (delta < 0): fast — step = ceil(abs(delta)/3) = (abs + 2) / 3
+            # At delta=21: recovery adds 3/yr (7 years to close); decline subtracts 7/yr (3 years to close).
+            if = {
+                limit = { var:tmp_rs_delta_abs = 0 }
+                set_variable = { name = tmp_rs_step value = 0 }
+            }
+            else_if = {
+                limit = { var:tmp_rs_delta > 0 }
+                # slow recovery
+                set_variable = { name = tmp_rs_step_numer value = var:tmp_rs_delta_abs }
+                change_variable = { name = tmp_rs_step_numer add = 6 }
+                set_variable = { name = tmp_rs_step value = var:tmp_rs_step_numer }
+                change_variable = { name = tmp_rs_step divide = 7 }
+                if = { limit = { var:tmp_rs_step < 1 } set_variable = { name = tmp_rs_step value = 1 } }
+            }
+            else = {
+                # fast decline
+                set_variable = { name = tmp_rs_step_numer value = var:tmp_rs_delta_abs }
+                change_variable = { name = tmp_rs_step_numer add = 2 }
+                set_variable = { name = tmp_rs_step value = var:tmp_rs_step_numer }
+                change_variable = { name = tmp_rs_step divide = 3 }
+                if = { limit = { var:tmp_rs_step < 1 } set_variable = { name = tmp_rs_step value = 1 } }
+            }
+
+            # apply the step toward the target and expose predicted change (signed)
+            if = {
+                limit = { var:tmp_rs_delta > 0 }
+                change_variable = { name = riseandfall_realm_stability_score add = var:tmp_rs_step }
+                set_variable = { name = riseandfall_realm_stability_predicted_change value = var:tmp_rs_step }
+            }
+            else_if = {
+                limit = { var:tmp_rs_delta < 0 }
+                # make signed negative step
+                set_variable = { name = tmp_rs_step_neg value = var:tmp_rs_step }
+                change_variable = { name = tmp_rs_step_neg multiply = -1 }
+                change_variable = { name = riseandfall_realm_stability_score add = var:tmp_rs_step_neg }
+                set_variable = { name = riseandfall_realm_stability_predicted_change value = var:tmp_rs_step_neg }
+            }
+            else = {
+                # no change needed
+                set_variable = { name = riseandfall_realm_stability_predicted_change value = 0 }
+            }
+
+            clamp_variable = { name = riseandfall_realm_stability_predicted_change min = -100 max = 100 }
+            round_variable = { name = riseandfall_realm_stability_predicted_change nearest = 1 }
+        }
+    }
+
+    # Ensure current score remains clamped and integer
+    # Story Mode does not silently floor the current score. Grace and role help are shown through visible additive rows.
+    clamp_variable = { name = riseandfall_realm_stability_score min = 0 max = 100 }
+    round_variable = { name = riseandfall_realm_stability_score nearest = 1 }
+    
+
+    ########################################
+    # Civil war penalty is applied to the TARGET now; we do not modify the persistent
+    # current score here. Ensure the tooltip variable exists.
+    if = { limit = { NOT = { has_variable = riseandfall_realm_stability_civil_war_penalty } } set_variable = { name = riseandfall_realm_stability_civil_war_penalty value = 0 } }
+
+    
+
+    # Clamp and round the persistent current score (unchanged by civil-war target adjustments here)
+    clamp_variable = { name = riseandfall_realm_stability_score min = 0 max = 100 }
+    round_variable = { name = riseandfall_realm_stability_score }
+
+
+
+
+    # Remove any previously-applied fine-grained stability modifiers (1..100)
+    remove_character_modifier = riseandfall_stability_0
+    remove_character_modifier = riseandfall_stability_1
+    remove_character_modifier = riseandfall_stability_2
+    remove_character_modifier = riseandfall_stability_3
+    remove_character_modifier = riseandfall_stability_4
+    remove_character_modifier = riseandfall_stability_5
+    remove_character_modifier = riseandfall_stability_6
+    remove_character_modifier = riseandfall_stability_7
+    remove_character_modifier = riseandfall_stability_8
+    remove_character_modifier = riseandfall_stability_9
+    remove_character_modifier = riseandfall_stability_10
+    remove_character_modifier = riseandfall_stability_11
+    remove_character_modifier = riseandfall_stability_12
+    remove_character_modifier = riseandfall_stability_13
+    remove_character_modifier = riseandfall_stability_14
+    remove_character_modifier = riseandfall_stability_15
+    remove_character_modifier = riseandfall_stability_16
+    remove_character_modifier = riseandfall_stability_17
+    remove_character_modifier = riseandfall_stability_18
+    remove_character_modifier = riseandfall_stability_19
+    remove_character_modifier = riseandfall_stability_20
+    remove_character_modifier = riseandfall_stability_21
+    remove_character_modifier = riseandfall_stability_22
+    remove_character_modifier = riseandfall_stability_23
+    remove_character_modifier = riseandfall_stability_24
+    remove_character_modifier = riseandfall_stability_25
+    remove_character_modifier = riseandfall_stability_26
+    remove_character_modifier = riseandfall_stability_27
+    remove_character_modifier = riseandfall_stability_28
+    remove_character_modifier = riseandfall_stability_29
+    remove_character_modifier = riseandfall_stability_30
+    remove_character_modifier = riseandfall_stability_31
+    remove_character_modifier = riseandfall_stability_32
+    remove_character_modifier = riseandfall_stability_33
+    remove_character_modifier = riseandfall_stability_34
+    remove_character_modifier = riseandfall_stability_35
+    remove_character_modifier = riseandfall_stability_36
+    remove_character_modifier = riseandfall_stability_37
+    remove_character_modifier = riseandfall_stability_38
+    remove_character_modifier = riseandfall_stability_39
+    remove_character_modifier = riseandfall_stability_40
+    remove_character_modifier = riseandfall_stability_41
+    remove_character_modifier = riseandfall_stability_42
+    remove_character_modifier = riseandfall_stability_43
+    remove_character_modifier = riseandfall_stability_44
+    remove_character_modifier = riseandfall_stability_45
+    remove_character_modifier = riseandfall_stability_46
+    remove_character_modifier = riseandfall_stability_47
+    remove_character_modifier = riseandfall_stability_48
+    remove_character_modifier = riseandfall_stability_49
+    remove_character_modifier = riseandfall_stability_50
+    remove_character_modifier = riseandfall_stability_51
+    remove_character_modifier = riseandfall_stability_52
+    remove_character_modifier = riseandfall_stability_53
+    remove_character_modifier = riseandfall_stability_54
+    remove_character_modifier = riseandfall_stability_55
+    remove_character_modifier = riseandfall_stability_56
+    remove_character_modifier = riseandfall_stability_57
+    remove_character_modifier = riseandfall_stability_58
+    remove_character_modifier = riseandfall_stability_59
+    remove_character_modifier = riseandfall_stability_60
+    remove_character_modifier = riseandfall_stability_61
+    remove_character_modifier = riseandfall_stability_62
+    remove_character_modifier = riseandfall_stability_63
+    remove_character_modifier = riseandfall_stability_64
+    remove_character_modifier = riseandfall_stability_65
+    remove_character_modifier = riseandfall_stability_66
+    remove_character_modifier = riseandfall_stability_67
+    remove_character_modifier = riseandfall_stability_68
+    remove_character_modifier = riseandfall_stability_69
+    remove_character_modifier = riseandfall_stability_70
+    remove_character_modifier = riseandfall_stability_71
+    remove_character_modifier = riseandfall_stability_72
+    remove_character_modifier = riseandfall_stability_73
+    remove_character_modifier = riseandfall_stability_74
+    remove_character_modifier = riseandfall_stability_75
+    remove_character_modifier = riseandfall_stability_76
+    remove_character_modifier = riseandfall_stability_77
+    remove_character_modifier = riseandfall_stability_78
+    remove_character_modifier = riseandfall_stability_79
+    remove_character_modifier = riseandfall_stability_80
+    remove_character_modifier = riseandfall_stability_81
+    remove_character_modifier = riseandfall_stability_82
+    remove_character_modifier = riseandfall_stability_83
+    remove_character_modifier = riseandfall_stability_84
+    remove_character_modifier = riseandfall_stability_85
+    remove_character_modifier = riseandfall_stability_86
+    remove_character_modifier = riseandfall_stability_87
+    remove_character_modifier = riseandfall_stability_88
+    remove_character_modifier = riseandfall_stability_89
+    remove_character_modifier = riseandfall_stability_90
+    remove_character_modifier = riseandfall_stability_91
+    remove_character_modifier = riseandfall_stability_92
+    remove_character_modifier = riseandfall_stability_93
+    remove_character_modifier = riseandfall_stability_94
+    remove_character_modifier = riseandfall_stability_95
+    remove_character_modifier = riseandfall_stability_96
+    remove_character_modifier = riseandfall_stability_97
+    remove_character_modifier = riseandfall_stability_98
+    remove_character_modifier = riseandfall_stability_99
+    remove_character_modifier = riseandfall_stability_100
+
+    # Choose and add exactly one fine-grained modifier based on CURRENT score (0..100)
+    # Map score N -> riseandfall_stability_N, with 0 mapped to 1 since modifiers are 1..100
+    if = { limit = { var:riseandfall_realm_stability_score = 0 } add_character_modifier = { modifier = riseandfall_stability_0 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 1 } add_character_modifier = { modifier = riseandfall_stability_1 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 2 } add_character_modifier = { modifier = riseandfall_stability_2 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 3 } add_character_modifier = { modifier = riseandfall_stability_3 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 4 } add_character_modifier = { modifier = riseandfall_stability_4 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 5 } add_character_modifier = { modifier = riseandfall_stability_5 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 6 } add_character_modifier = { modifier = riseandfall_stability_6 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 7 } add_character_modifier = { modifier = riseandfall_stability_7 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 8 } add_character_modifier = { modifier = riseandfall_stability_8 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 9 } add_character_modifier = { modifier = riseandfall_stability_9 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 10 } add_character_modifier = { modifier = riseandfall_stability_10 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 11 } add_character_modifier = { modifier = riseandfall_stability_11 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 12 } add_character_modifier = { modifier = riseandfall_stability_12 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 13 } add_character_modifier = { modifier = riseandfall_stability_13 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 14 } add_character_modifier = { modifier = riseandfall_stability_14 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 15 } add_character_modifier = { modifier = riseandfall_stability_15 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 16 } add_character_modifier = { modifier = riseandfall_stability_16 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 17 } add_character_modifier = { modifier = riseandfall_stability_17 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 18 } add_character_modifier = { modifier = riseandfall_stability_18 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 19 } add_character_modifier = { modifier = riseandfall_stability_19 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 20 } add_character_modifier = { modifier = riseandfall_stability_20 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 21 } add_character_modifier = { modifier = riseandfall_stability_21 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 22 } add_character_modifier = { modifier = riseandfall_stability_22 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 23 } add_character_modifier = { modifier = riseandfall_stability_23 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 24 } add_character_modifier = { modifier = riseandfall_stability_24 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 25 } add_character_modifier = { modifier = riseandfall_stability_25 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 26 } add_character_modifier = { modifier = riseandfall_stability_26 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 27 } add_character_modifier = { modifier = riseandfall_stability_27 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 28 } add_character_modifier = { modifier = riseandfall_stability_28 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 29 } add_character_modifier = { modifier = riseandfall_stability_29 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 30 } add_character_modifier = { modifier = riseandfall_stability_30 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 31 } add_character_modifier = { modifier = riseandfall_stability_31 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 32 } add_character_modifier = { modifier = riseandfall_stability_32 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 33 } add_character_modifier = { modifier = riseandfall_stability_33 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 34 } add_character_modifier = { modifier = riseandfall_stability_34 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 35 } add_character_modifier = { modifier = riseandfall_stability_35 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 36 } add_character_modifier = { modifier = riseandfall_stability_36 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 37 } add_character_modifier = { modifier = riseandfall_stability_37 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 38 } add_character_modifier = { modifier = riseandfall_stability_38 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 39 } add_character_modifier = { modifier = riseandfall_stability_39 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 40 } add_character_modifier = { modifier = riseandfall_stability_40 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 41 } add_character_modifier = { modifier = riseandfall_stability_41 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 42 } add_character_modifier = { modifier = riseandfall_stability_42 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 43 } add_character_modifier = { modifier = riseandfall_stability_43 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 44 } add_character_modifier = { modifier = riseandfall_stability_44 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 45 } add_character_modifier = { modifier = riseandfall_stability_45 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 46 } add_character_modifier = { modifier = riseandfall_stability_46 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 47 } add_character_modifier = { modifier = riseandfall_stability_47 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 48 } add_character_modifier = { modifier = riseandfall_stability_48 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 49 } add_character_modifier = { modifier = riseandfall_stability_49 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 50 } add_character_modifier = { modifier = riseandfall_stability_50 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 51 } add_character_modifier = { modifier = riseandfall_stability_51 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 52 } add_character_modifier = { modifier = riseandfall_stability_52 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 53 } add_character_modifier = { modifier = riseandfall_stability_53 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 54 } add_character_modifier = { modifier = riseandfall_stability_54 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 55 } add_character_modifier = { modifier = riseandfall_stability_55 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 56 } add_character_modifier = { modifier = riseandfall_stability_56 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 57 } add_character_modifier = { modifier = riseandfall_stability_57 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 58 } add_character_modifier = { modifier = riseandfall_stability_58 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 59 } add_character_modifier = { modifier = riseandfall_stability_59 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 60 } add_character_modifier = { modifier = riseandfall_stability_60 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 61 } add_character_modifier = { modifier = riseandfall_stability_61 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 62 } add_character_modifier = { modifier = riseandfall_stability_62 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 63 } add_character_modifier = { modifier = riseandfall_stability_63 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 64 } add_character_modifier = { modifier = riseandfall_stability_64 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 65 } add_character_modifier = { modifier = riseandfall_stability_65 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 66 } add_character_modifier = { modifier = riseandfall_stability_66 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 67 } add_character_modifier = { modifier = riseandfall_stability_67 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 68 } add_character_modifier = { modifier = riseandfall_stability_68 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 69 } add_character_modifier = { modifier = riseandfall_stability_69 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 70 } add_character_modifier = { modifier = riseandfall_stability_70 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 71 } add_character_modifier = { modifier = riseandfall_stability_71 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 72 } add_character_modifier = { modifier = riseandfall_stability_72 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 73 } add_character_modifier = { modifier = riseandfall_stability_73 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 74 } add_character_modifier = { modifier = riseandfall_stability_74 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 75 } add_character_modifier = { modifier = riseandfall_stability_75 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 76 } add_character_modifier = { modifier = riseandfall_stability_76 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 77 } add_character_modifier = { modifier = riseandfall_stability_77 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 78 } add_character_modifier = { modifier = riseandfall_stability_78 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 79 } add_character_modifier = { modifier = riseandfall_stability_79 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 80 } add_character_modifier = { modifier = riseandfall_stability_80 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 81 } add_character_modifier = { modifier = riseandfall_stability_81 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 82 } add_character_modifier = { modifier = riseandfall_stability_82 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 83 } add_character_modifier = { modifier = riseandfall_stability_83 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 84 } add_character_modifier = { modifier = riseandfall_stability_84 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 85 } add_character_modifier = { modifier = riseandfall_stability_85 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 86 } add_character_modifier = { modifier = riseandfall_stability_86 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 87 } add_character_modifier = { modifier = riseandfall_stability_87 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 88 } add_character_modifier = { modifier = riseandfall_stability_88 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 89 } add_character_modifier = { modifier = riseandfall_stability_89 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 90 } add_character_modifier = { modifier = riseandfall_stability_90 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 91 } add_character_modifier = { modifier = riseandfall_stability_91 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 92 } add_character_modifier = { modifier = riseandfall_stability_92 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 93 } add_character_modifier = { modifier = riseandfall_stability_93 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 94 } add_character_modifier = { modifier = riseandfall_stability_94 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 95 } add_character_modifier = { modifier = riseandfall_stability_95 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 96 } add_character_modifier = { modifier = riseandfall_stability_96 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 97 } add_character_modifier = { modifier = riseandfall_stability_97 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 98 } add_character_modifier = { modifier = riseandfall_stability_98 } }
+    else_if = { limit = { var:riseandfall_realm_stability_score = 99 } add_character_modifier = { modifier = riseandfall_stability_99 } }
+    else = { add_character_modifier = { modifier = riseandfall_stability_100 } }
+
+}
+
+# Mark rulers right after succession and rate succession shock based on per-stat downgrades.
+# Root scope: inheriting ruler
+# Expected saved scope: scope:predecessor
+riseandfall_mark_story_succession_shock_se = {
+    if = {
+        limit = {
+            exists = scope:predecessor
+        }
+        # Predecessor may be alive in a stepdown/overthrow succession.
+        set_variable = { name = tmp_rs_succession_shock value = 0 }
+
+        # Each stat delta is capped at ±10.
+        # We only want a penalty, so positive total deltas are stored as shock;
+        # negative totals are clamped to 0 after aggregation.
+        set_variable = { name = tmp_rs_stat_drop value = scope:predecessor.diplomacy }
+        set_variable = { name = tmp_rs_current_stat value = diplomacy }
+        change_variable = { name = tmp_rs_current_stat multiply = -1 }
+        change_variable = { name = tmp_rs_stat_drop add = var:tmp_rs_current_stat }
+        if = { limit = { var:tmp_rs_stat_drop > 10 } set_variable = { name = tmp_rs_stat_drop value = 10 } }
+        else_if = { limit = { var:tmp_rs_stat_drop < -10 } set_variable = { name = tmp_rs_stat_drop value = -10 } }
+        change_variable = { name = tmp_rs_succession_shock add = var:tmp_rs_stat_drop }
+
+        set_variable = { name = tmp_rs_stat_drop value = scope:predecessor.martial }
+        set_variable = { name = tmp_rs_current_stat value = martial }
+        change_variable = { name = tmp_rs_current_stat multiply = -1 }
+        change_variable = { name = tmp_rs_stat_drop add = var:tmp_rs_current_stat }
+        if = { limit = { var:tmp_rs_stat_drop > 10 } set_variable = { name = tmp_rs_stat_drop value = 10 } }
+        else_if = { limit = { var:tmp_rs_stat_drop < -10 } set_variable = { name = tmp_rs_stat_drop value = -10 } }
+        change_variable = { name = tmp_rs_succession_shock add = var:tmp_rs_stat_drop }
+
+        set_variable = { name = tmp_rs_stat_drop value = scope:predecessor.stewardship }
+        set_variable = { name = tmp_rs_current_stat value = stewardship }
+        change_variable = { name = tmp_rs_current_stat multiply = -1 }
+        change_variable = { name = tmp_rs_stat_drop add = var:tmp_rs_current_stat }
+        if = { limit = { var:tmp_rs_stat_drop > 10 } set_variable = { name = tmp_rs_stat_drop value = 10 } }
+        else_if = { limit = { var:tmp_rs_stat_drop < -10 } set_variable = { name = tmp_rs_stat_drop value = -10 } }
+        change_variable = { name = tmp_rs_succession_shock add = var:tmp_rs_stat_drop }
+
+        set_variable = { name = tmp_rs_stat_drop value = scope:predecessor.intrigue }
+        set_variable = { name = tmp_rs_current_stat value = intrigue }
+        change_variable = { name = tmp_rs_current_stat multiply = -1 }
+        change_variable = { name = tmp_rs_stat_drop add = var:tmp_rs_current_stat }
+        if = { limit = { var:tmp_rs_stat_drop > 10 } set_variable = { name = tmp_rs_stat_drop value = 10 } }
+        else_if = { limit = { var:tmp_rs_stat_drop < -10 } set_variable = { name = tmp_rs_stat_drop value = -10 } }
+        change_variable = { name = tmp_rs_succession_shock add = var:tmp_rs_stat_drop }
+
+        set_variable = { name = tmp_rs_stat_drop value = scope:predecessor.learning }
+        set_variable = { name = tmp_rs_current_stat value = learning }
+        change_variable = { name = tmp_rs_current_stat multiply = -1 }
+        change_variable = { name = tmp_rs_stat_drop add = var:tmp_rs_current_stat }
+        if = { limit = { var:tmp_rs_stat_drop > 10 } set_variable = { name = tmp_rs_stat_drop value = 10 } }
+        else_if = { limit = { var:tmp_rs_stat_drop < -10 } set_variable = { name = tmp_rs_stat_drop value = -10 } }
+        change_variable = { name = tmp_rs_succession_shock add = var:tmp_rs_stat_drop }
+
+        clamp_variable = { name = tmp_rs_succession_shock min = -50 max = 50 }
+
+        if = {
+            limit = { var:tmp_rs_succession_shock > 0 }
+            set_variable = { name = riseandfall_rs_succession_shock value = var:tmp_rs_succession_shock }
+            clamp_variable = { name = riseandfall_rs_succession_shock min = 0 max = 50 }
+        }
+        else = {
+            remove_variable = riseandfall_rs_succession_shock
+        }
+    }
+}
+
+# Inherit realm stability from predecessor
+# Root scope: the heir/new character who should inherit
+# scope:predecessor (or saved scope) should contain the character whose stability is being transferred
+# This effect transfers 100% of the predecessor's stability score to the heir,
+# then initializes the calculation for the new ruler (fresh components, then apply inherited bonus)
+riseandfall_inherit_stability_score_se = {
+    # Require that realm stability is enabled
+    if = {
+        limit = { has_game_rule = riseandfall_realm_stability_enabled }
+        # Check if predecessor has a stability score to transfer
+        if = {
+            limit = {
+                scope:predecessor = {
+                    has_variable = riseandfall_realm_stability_score
+                    var:riseandfall_realm_stability_score > 0
+                }
+            }
+            # Save predecessor's score for calculation
+            save_scope_value_as = {
+                name = predecessor_stability_score
+                value = scope:predecessor.var:riseandfall_realm_stability_score
+            }
+            # Save predecessor's score for tooltip
+            save_scope_value_as = {
+                name = predecessor_stability_amount
+                value = scope:predecessor.var:riseandfall_realm_stability_score
+            }
+            
+            # Transfer 100% of predecessor's stability to heir (initialize inherited score)
+            # This becomes the starting point for the heir; it will be adjusted next recalculation
+            set_variable = {
+                name = riseandfall_realm_stability_score
+                value = scope:predecessor_stability_score
+            }
+            # Also initialize other variables the heir might need
+            set_variable = { name = riseandfall_rs_adjust_months value = 0 }
+            # Copy companion history from predecessor: civil war years and puppet regency years.
+            if = { limit = { scope:predecessor = { has_variable = riseandfall_rs_civil_war_years } } set_variable = { name = riseandfall_rs_civil_war_years value = scope:predecessor.var:riseandfall_rs_civil_war_years } }
+            
+            else = { set_variable = { name = riseandfall_rs_civil_war_years value = 0 } }
+            if = { limit = { scope:predecessor = { has_variable = riseandfall_puppet_regency_years } } set_variable = { name = riseandfall_puppet_regency_years value = scope:predecessor.var:riseandfall_puppet_regency_years } }
+            
+            else = { set_variable = { name = riseandfall_puppet_regency_years value = 0 } }
+            if = { limit = { scope:predecessor = { has_variable = riseandfall_rs_difficulty_multiplier } } set_variable = { name = riseandfall_rs_difficulty_multiplier value = scope:predecessor.var:riseandfall_rs_difficulty_multiplier } }
+            else = { set_variable = { name = riseandfall_rs_difficulty_multiplier value = 100 } }
+        }
+        else = {
+            # Predecessor had no stability score; initialize heir to baseline
+            set_variable = { name = riseandfall_rs_adjust_months value = 0 }
+            set_variable = { name = riseandfall_rs_civil_war_years value = 0 }
+            set_variable = { name = riseandfall_puppet_regency_years value = 0 }
+        }
+    }
+}
+
+# Merge an inherited realm's stored stability into an established ruler's score.
+# Root scope: inheriting ruler with an existing stability score.
+# Expected scopes: scope:predecessor has the inherited realm's score; scope:title is the gained realm title.
+riseandfall_merge_inherited_realm_stability_se = {
+    if = {
+        limit = {
+            has_game_rule = riseandfall_realm_stability_enabled
+            has_variable = riseandfall_realm_stability_score
+            exists = scope:predecessor
+            scope:predecessor = { has_variable = riseandfall_realm_stability_score }
+            exists = scope:title
+            scope:title = {
+                tier >= tier_duchy
+                tier = scope:predecessor.highest_held_title_tier
+            }
+            realm_size >= 1
+        }
+        save_scope_as = rf_stability_inheritor
+        set_variable = { name = tmp_rf_inherited_realm_counties value = 0 }
+        if = {
+            limit = {
+                scope:predecessor = {
+                    has_variable = riseandfall_rs_inheritance_realm_size
+                    var:riseandfall_rs_inheritance_realm_size > 0
+                }
+            }
+            set_variable = { name = tmp_rf_inherited_realm_counties value = scope:predecessor.var:riseandfall_rs_inheritance_realm_size }
+        }
+        else = {
+            scope:title = {
+                every_in_de_jure_hierarchy = {
+                    limit = {
+                        tier = tier_county
+                        holder = {
+                            OR = {
+                                this = scope:rf_stability_inheritor
+                                target_is_liege_or_above = scope:rf_stability_inheritor
+                            }
+                        }
+                    }
+                    scope:rf_stability_inheritor = {
+                        change_variable = { name = tmp_rf_inherited_realm_counties add = 1 }
+                    }
+                }
+            }
+        }
+        if = {
+            limit = { var:tmp_rf_inherited_realm_counties > 0 }
+            set_variable = { name = tmp_rf_total_realm_counties value = realm_size }
+            if = {
+                limit = { var:tmp_rf_inherited_realm_counties > var:tmp_rf_total_realm_counties }
+                set_variable = { name = tmp_rf_inherited_realm_counties value = var:tmp_rf_total_realm_counties }
+            }
+            set_variable = { name = tmp_rf_existing_realm_counties value = var:tmp_rf_total_realm_counties }
+            set_variable = { name = tmp_rf_inherited_realm_counties_neg value = var:tmp_rf_inherited_realm_counties }
+            change_variable = { name = tmp_rf_inherited_realm_counties_neg multiply = -1 }
+            change_variable = { name = tmp_rf_existing_realm_counties add = var:tmp_rf_inherited_realm_counties_neg }
+            if = { limit = { var:tmp_rf_existing_realm_counties < 0 } set_variable = { name = tmp_rf_existing_realm_counties value = 0 } }
+
+            set_variable = { name = tmp_rf_existing_stability_weighted value = var:riseandfall_realm_stability_score }
+            change_variable = { name = tmp_rf_existing_stability_weighted multiply = var:tmp_rf_existing_realm_counties }
+            set_variable = { name = tmp_rf_inherited_stability_weighted value = scope:predecessor.var:riseandfall_realm_stability_score }
+            change_variable = { name = tmp_rf_inherited_stability_weighted multiply = var:tmp_rf_inherited_realm_counties }
+            set_variable = { name = riseandfall_realm_stability_score value = var:tmp_rf_existing_stability_weighted }
+            change_variable = { name = riseandfall_realm_stability_score add = var:tmp_rf_inherited_stability_weighted }
+            change_variable = { name = riseandfall_realm_stability_score divide = var:tmp_rf_total_realm_counties }
+            clamp_variable = { name = riseandfall_realm_stability_score min = 0 max = 100 }
+            round_variable = { name = riseandfall_realm_stability_score nearest = 1 }
+
+            # The immediate merge is the inheritance adjustment. Let the following
+            # recalculation refresh components and modifiers without applying an extra smoothing step.
+            set_variable = { name = riseandfall_rs_adjust_months value = -1 }
+            set_variable = { name = riseandfall_realm_stability_predicted_change value = 0 }
+            set_variable = { name = riseandfall_rs_last_stability_merge_predecessor value = scope:predecessor }
+        }
+    }
+}
+
+#External Scripts
+
+riseandfall_low_stability_grace_period_se = {
+    every_independent_ruler = {
+        add_character_flag = { flag = rf_low_stability_cooldown years = 5 }
+    }
+}
+
+
+# Called on the war winner scope (character) to reduce the war penalty by -10
+riseandfall_war_victory_se = {
+    # Defensive: only operate on living characters
+    if = { limit = { is_alive = yes }
+    if = { limit = { NOT = { has_variable = riseandfall_war_penalty } } set_variable = { name = riseandfall_war_penalty value = 0 } }
+    # Defensive: if a war scope exists and it's a peasant war, don't apply victory penalty reduction.
+    if = {
+        limit = { scope:war = { using_cb = peasant_war } }
+        # do nothing for peasant wars
+    }
+    else = {
+        # Reduce penalty by -10
+        change_variable = { name = riseandfall_war_penalty add = -10 }
+        # Clamp to minimum 0
+        if = { limit = { var:riseandfall_war_penalty < 0 } set_variable = { name = riseandfall_war_penalty value = 0 } }
+    }
+    }
+}
+
+# Clear the low-stability county modifiers from the current county scope.
+riseandfall_clear_low_stability_county_modifiers_se = {
+    if = {
+        limit = { has_county_modifier = riseandfall_nationalist_revolt }
+        remove_county_modifier = riseandfall_nationalist_revolt
+    }
+    if = {
+        limit = { has_county_modifier = riseandfall_authority_collapse }
+        remove_county_modifier = riseandfall_authority_collapse
+    }
+}
+
+# Clear collapse-only county unrest when a peasant-led revolt successfully breaks away.
+riseandfall_clear_peasant_victory_low_stability_modifiers_se = {
+    if = {
+        limit = {
+            is_alive = yes
+            is_landed = yes
+            OR = {
+                has_trait = peasant_leader
+                has_trait = populist_leader
+            }
+        }
+        every_realm_county = {
+            riseandfall_clear_low_stability_county_modifiers_se = yes
+        }
+    }
+}
+
+# Called on the war loser scope (character) to increase the war penalty by +10
+riseandfall_war_loss_se = {
+    # Only operate on living characters; variables are stored on character scopes
+    if = {
+        limit = { is_alive = yes }
+        if = { limit = { NOT = { has_variable = riseandfall_war_penalty } } set_variable = { name = riseandfall_war_penalty value = 0 } }
+        # Defensive: if a war scope exists and it's a peasant war, don't apply loss penalty here
+        if = {
+            limit = { scope:war = { using_cb = peasant_war } }
+            # do nothing for peasant wars
+        }
+        else = {
+            # Increase penalty by +10
+            change_variable = { name = riseandfall_war_penalty add = 10 }
+        }
+    }
+}
+
+
+# Clear stability variables and modifiers on characters who are unlanded. This helps
+# remove stale data from characters who lost their lands and prevents stray modifiers
+# and variables from lingering on unlanded characters.
+riseandfall_clear_unlanded_stability_vars_se = {
+    every_living_character = {
+        limit = { is_landed = no }
+        # Remove recorded variables if present — removing a non-existent var is safe
+        remove_variable = riseandfall_realm_stability_score
+        remove_variable = riseandfall_realm_stability_target
+        remove_variable = riseandfall_rs_stats_component
+        remove_variable = riseandfall_rs_vassals_component
+        remove_variable = riseandfall_rs_realm_size_component
+        remove_variable = riseandfall_rs_total_development
+        remove_variable = riseandfall_rs_average_development
+        remove_variable = riseandfall_rs_development_pct
+        remove_variable = riseandfall_rs_strong_vassal_component
+        remove_variable = riseandfall_rs_culture_faith_component
+        remove_variable = riseandfall_rs_epidemic_component
+        remove_variable = riseandfall_rs_partition_component
+        remove_variable = riseandfall_rs_succession_component
+        remove_variable = riseandfall_rs_legitimate_house_component
+        remove_variable = riseandfall_rs_story_pressure_component
+        remove_variable = riseandfall_story_recovery_component
+        remove_variable = riseandfall_story_role
+        remove_variable = riseandfall_story_role_years
+        remove_variable = riseandfall_story_protection
+        remove_variable = riseandfall_story_collapse_pressure
+        remove_variable = riseandfall_story_successor_grace
+        remove_variable = riseandfall_story_successor_grace_years
+        remove_variable = riseandfall_story_successor_grace_decay
+        remove_variable = riseandfall_story_world_climate
+        remove_variable = riseandfall_story_blob_pressure
+        remove_variable = riseandfall_story_reign_tension
+        remove_variable = riseandfall_story_stagnation_pressure
+        remove_variable = riseandfall_story_ancient_regime
+        remove_variable = riseandfall_story_last_succession_year
+        remove_variable = riseandfall_story_no_succession_years
+        remove_variable = riseandfall_story_ruler_shield
+        remove_variable = riseandfall_story_complacent_vassals
+        remove_variable = riseandfall_story_complacent_vassal_pressure
+        remove_variable = riseandfall_story_rival_count
+        remove_variable = riseandfall_story_strongest_rival_pct
+        remove_variable = riseandfall_story_external_rival_relief
+        remove_variable = riseandfall_story_collapse_gain_last
+        remove_variable = riseandfall_story_no_rival_years
+        remove_variable = riseandfall_story_no_rival_pressure
+        remove_variable = riseandfall_rs_strong_vassal_count
+        remove_variable = riseandfall_rs_foreign_culture_county_pct
+        remove_variable = riseandfall_rs_foreign_faith_county_pct
+        remove_variable = riseandfall_rs_epidemic_province_pct
+        remove_variable = riseandfall_rs_legitimacy_component
+        if = {
+            limit = { has_character_flag = rf_rs_use_diarch_stats }
+            remove_character_flag = rf_rs_use_diarch_stats
+        }
+        remove_variable = riseandfall_puppet_regency_years
+        remove_variable = riseandfall_rs_civil_war_years
+        remove_variable = riseandfall_realm_stability_civil_war_penalty
+        remove_variable = riseandfall_rs_difficulty_multiplier
+        remove_variable = riseandfall_realm_stability_sex_law_penalty
+        remove_variable = riseandfall_rs_adjust_months
+        remove_variable = riseandfall_realm_stability_predicted_change
+        remove_variable = riseandfall_rs_inheritance_realm_size
+        remove_variable = riseandfall_rs_last_stability_merge_predecessor
+        remove_variable = riseandfall_lh_years_ruled_display
+        remove_variable = riseandfall_lh_score_display
+        remove_variable = riseandfall_lh_status_display
+        remove_variable = riseandfall_lh_relation_display
+        # Remove any fine-grained stability modifiers (0..100)
+        remove_character_modifier = riseandfall_stability_0
+        remove_character_modifier = riseandfall_stability_1
+        remove_character_modifier = riseandfall_stability_2
+        remove_character_modifier = riseandfall_stability_3
+        remove_character_modifier = riseandfall_stability_4
+        remove_character_modifier = riseandfall_stability_5
+        remove_character_modifier = riseandfall_stability_6
+        remove_character_modifier = riseandfall_stability_7
+        remove_character_modifier = riseandfall_stability_8
+        remove_character_modifier = riseandfall_stability_9
+        remove_character_modifier = riseandfall_stability_10
+        remove_character_modifier = riseandfall_stability_11
+        remove_character_modifier = riseandfall_stability_12
+        remove_character_modifier = riseandfall_stability_13
+        remove_character_modifier = riseandfall_stability_14
+        remove_character_modifier = riseandfall_stability_15
+        remove_character_modifier = riseandfall_stability_16
+        remove_character_modifier = riseandfall_stability_17
+        remove_character_modifier = riseandfall_stability_18
+        remove_character_modifier = riseandfall_stability_19
+        remove_character_modifier = riseandfall_stability_20
+        remove_character_modifier = riseandfall_stability_21
+        remove_character_modifier = riseandfall_stability_22
+        remove_character_modifier = riseandfall_stability_23
+        remove_character_modifier = riseandfall_stability_24
+        remove_character_modifier = riseandfall_stability_25
+        remove_character_modifier = riseandfall_stability_26
+        remove_character_modifier = riseandfall_stability_27
+        remove_character_modifier = riseandfall_stability_28
+        remove_character_modifier = riseandfall_stability_29
+        remove_character_modifier = riseandfall_stability_30
+        remove_character_modifier = riseandfall_stability_31
+        remove_character_modifier = riseandfall_stability_32
+        remove_character_modifier = riseandfall_stability_33
+        remove_character_modifier = riseandfall_stability_34
+        remove_character_modifier = riseandfall_stability_35
+        remove_character_modifier = riseandfall_stability_36
+        remove_character_modifier = riseandfall_stability_37
+        remove_character_modifier = riseandfall_stability_38
+        remove_character_modifier = riseandfall_stability_39
+        remove_character_modifier = riseandfall_stability_40
+        remove_character_modifier = riseandfall_stability_41
+        remove_character_modifier = riseandfall_stability_42
+        remove_character_modifier = riseandfall_stability_43
+        remove_character_modifier = riseandfall_stability_44
+        remove_character_modifier = riseandfall_stability_45
+        remove_character_modifier = riseandfall_stability_46
+        remove_character_modifier = riseandfall_stability_47
+        remove_character_modifier = riseandfall_stability_48
+        remove_character_modifier = riseandfall_stability_49
+        remove_character_modifier = riseandfall_stability_50
+        remove_character_modifier = riseandfall_stability_51
+        remove_character_modifier = riseandfall_stability_52
+        remove_character_modifier = riseandfall_stability_53
+        remove_character_modifier = riseandfall_stability_54
+        remove_character_modifier = riseandfall_stability_55
+        remove_character_modifier = riseandfall_stability_56
+        remove_character_modifier = riseandfall_stability_57
+        remove_character_modifier = riseandfall_stability_58
+        remove_character_modifier = riseandfall_stability_59
+        remove_character_modifier = riseandfall_stability_60
+        remove_character_modifier = riseandfall_stability_61
+        remove_character_modifier = riseandfall_stability_62
+        remove_character_modifier = riseandfall_stability_63
+        remove_character_modifier = riseandfall_stability_64
+        remove_character_modifier = riseandfall_stability_65
+        remove_character_modifier = riseandfall_stability_66
+        remove_character_modifier = riseandfall_stability_67
+        remove_character_modifier = riseandfall_stability_68
+        remove_character_modifier = riseandfall_stability_69
+        remove_character_modifier = riseandfall_stability_70
+        remove_character_modifier = riseandfall_stability_71
+        remove_character_modifier = riseandfall_stability_72
+        remove_character_modifier = riseandfall_stability_73
+        remove_character_modifier = riseandfall_stability_74
+        remove_character_modifier = riseandfall_stability_75
+        remove_character_modifier = riseandfall_stability_76
+        remove_character_modifier = riseandfall_stability_77
+        remove_character_modifier = riseandfall_stability_78
+        remove_character_modifier = riseandfall_stability_79
+        remove_character_modifier = riseandfall_stability_80
+        remove_character_modifier = riseandfall_stability_81
+        remove_character_modifier = riseandfall_stability_82
+        remove_character_modifier = riseandfall_stability_83
+        remove_character_modifier = riseandfall_stability_84
+        remove_character_modifier = riseandfall_stability_85
+        remove_character_modifier = riseandfall_stability_86
+        remove_character_modifier = riseandfall_stability_87
+        remove_character_modifier = riseandfall_stability_88
+        remove_character_modifier = riseandfall_stability_89
+        remove_character_modifier = riseandfall_stability_90
+        remove_character_modifier = riseandfall_stability_91
+        remove_character_modifier = riseandfall_stability_92
+        remove_character_modifier = riseandfall_stability_93
+        remove_character_modifier = riseandfall_stability_94
+        remove_character_modifier = riseandfall_stability_95
+        remove_character_modifier = riseandfall_stability_96
+        remove_character_modifier = riseandfall_stability_97
+        remove_character_modifier = riseandfall_stability_98
+        remove_character_modifier = riseandfall_stability_99
+        remove_character_modifier = riseandfall_stability_100
+    }
+}

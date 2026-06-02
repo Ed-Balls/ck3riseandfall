@@ -1,0 +1,94 @@
+﻿riseandfall_create_adventurer_camp_interaction = {
+    category = interaction_riseandfall
+    common_interaction = yes
+    interface_priority = 95
+    icon = icon_riseandfall
+
+    desc = riseandfall_create_adventurer_camp_interaction_desc
+    notification_text = riseandfall_create_adventurer_camp_notification
+
+    # Only show/useable for the player (human), unlanded characters converting themselves
+    is_shown = {
+        scope:actor = {
+            is_ai = no
+            is_landed = no
+            is_ruler = no
+            has_game_rule = riseandfall_lite_mode_disabled
+            # Include implicit claims so claimant adventurers can use inherited/hegemony claims.
+            any_claim = { explicit = all tier >= tier_kingdom exists = holder holder = { is_independent_ruler = yes } }
+        }
+        scope:recipient = scope:actor # Self-targeting: actor == recipient
+    }
+
+    is_valid = {
+        scope:actor = {
+            is_ai = no
+            is_landed = no
+            is_ruler = no
+            has_game_rule = riseandfall_lite_mode_disabled
+            # Keep this aligned with the camp purpose assigned below.
+            any_claim = { explicit = all tier >= tier_kingdom exists = holder holder = { is_independent_ruler = yes } }
+        }
+        scope:recipient = scope:actor
+    }
+
+    # Do not let AI perform this
+    ai_potential = { always = no }
+    ai_min_reply_days = 0
+    ai_max_reply_days = 0
+
+    send_options_exclusive = no
+    auto_accept = yes
+
+    # The action: turn actor into an adventurer by creating a landless adventurer title for them
+    on_accept = {
+        scope:actor = {
+            clear_saved_scope = claim_target_title
+            clear_saved_scope = independent_ruler
+
+            # Use the same target selection/setup path as AI-created adventurers:
+            # highest-tier valid claim first, with the holder saved for gold/host scaling.
+            if = {
+                limit = { any_claim = { explicit = all tier >= tier_hegemony exists = holder holder = { is_independent_ruler = yes } } }
+                random_claim = {
+                    explicit = all
+                    limit = { tier >= tier_hegemony exists = holder holder = { is_independent_ruler = yes } }
+                    save_scope_as = claim_target_title
+                }
+            }
+            else_if = {
+                limit = { any_claim = { explicit = all tier >= tier_empire exists = holder holder = { is_independent_ruler = yes } } }
+                random_claim = {
+                    explicit = all
+                    limit = { tier >= tier_empire exists = holder holder = { is_independent_ruler = yes } }
+                    save_scope_as = claim_target_title
+                }
+            }
+            else_if = {
+                limit = { any_claim = { explicit = all tier >= tier_kingdom exists = holder holder = { is_independent_ruler = yes } } }
+                random_claim = {
+                    explicit = all
+                    limit = { tier >= tier_kingdom exists = holder holder = { is_independent_ruler = yes } }
+                    save_scope_as = claim_target_title
+                }
+            }
+
+            if = {
+                limit = { exists = scope:claim_target_title.holder }
+                scope:claim_target_title.holder = { save_scope_as = independent_ruler }
+            }
+
+            riseandfall_do_create_adventurer_se = yes
+
+            # Send immediate UI confirmation to the player
+            hidden_effect = {
+                send_interface_toast = {
+                    type = event_toast_effect_good
+                    title = riseandfall_create_adventurer_camp_notification_title
+                    left_icon = scope:actor
+                    custom_tooltip = riseandfall_create_adventurer_camp_notification_tooltip
+                }
+            }
+        }
+    }
+}

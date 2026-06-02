@@ -1,0 +1,348 @@
+﻿riseandfall_enable_adventurer_creator = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled (adventurer creation systems active)
+    default = riseandfall_adventurer_creator_enabled
+
+    riseandfall_adventurer_creator_enabled = {
+    }
+
+    riseandfall_adventurer_creator_disabled = {
+        flag = riseandfall_adventurer_creator_disabled
+    }
+}
+
+riseandfall_enable_adventurer_cleanup = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled (cleanup of mod-created adventurer titles)
+    default = riseandfall_adventurer_cleanup
+
+    riseandfall_adventurer_cleanup = {
+    }
+
+    riseandfall_adventurer_cleanup_disabled = {
+        flag = riseandfall_adventurer_cleanup_disabled
+    }
+}
+
+riseandfall_adventurer_chance = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: low (-1% base chance)
+    default = riseandfall_adventurer_chance_low
+
+    riseandfall_adventurer_chance_low = {
+    }
+
+    riseandfall_adventurer_chance_medium = {
+    }
+
+    riseandfall_adventurer_chance_high = {
+    }
+}
+
+riseandfall_enable_mma_modifier = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: disabled (men-at-arms modifier is off by default)
+    default = riseandfall_mma_modifier_disabled
+
+    # Legacy name (kept for savegame compatibility) — behaves identically to the 'all' option
+    riseandfall_mma_modifier_enabled = {
+        apply_modifier = all:riseandfall_yearly_maa_limit_increase_modifier
+    }
+
+    # Disabled (do not apply the men-at-arms modifier)
+    riseandfall_mma_modifier_disabled = {
+        flag = riseandfall_mma_modifier_disabled
+    }
+}
+
+riseandfall_enable_mma_limit_modifier = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: disabled (men-at-arms cap increases for administrative governments are off by default)
+    default = riseandfall_mma_limit_modifier_disabled
+
+    # Legacy name (kept for savegame compatibility) — behaves identically to the 'all' option
+    riseandfall_mma_limit_modifier_enabled = {
+        apply_modifier = all:riseandfall_yearly_maa_limit_cap_increase_modifier
+    }
+
+    # Disabled (no automatic modifier application)
+    riseandfall_mma_limit_modifier_disabled = {
+        flag = riseandfall_mma_limit_modifier_disabled
+    }
+}
+
+riseandfall_enable_realm_stability = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled
+    default = riseandfall_realm_stability_enabled
+
+    riseandfall_realm_stability_enabled = {
+    }
+
+    riseandfall_realm_stability_disabled = {
+        flag = riseandfall_realm_stability_disabled
+    }
+}
+
+riseandfall_legitimate_houses = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled. Independent duchy+ titles track their accepted ruling
+    # house and can penalize Realm Stability when held by a new house.
+    default = riseandfall_legitimate_houses_enabled
+
+    riseandfall_legitimate_houses_enabled = {
+    }
+
+    riseandfall_legitimate_houses_disabled = {
+        flag = riseandfall_legitimate_houses_disabled
+    }
+}
+
+riseandfall_realm_stability_difficulty_target = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: Both players and AI use the difficulty multiplier
+    default = riseandfall_realm_stability_difficulty_both
+
+    # Both: no flag needed; multiplier applies to everyone
+    riseandfall_realm_stability_difficulty_both = {
+    }
+
+    # Player Only: apply multiplier only to player-controlled characters
+    riseandfall_realm_stability_difficulty_player_only = {
+        flag = riseandfall_realm_stability_difficulty_player_only
+    }
+
+    # AI Only: apply multiplier only to AI-controlled characters
+    riseandfall_realm_stability_difficulty_ai_only = {
+        flag = riseandfall_realm_stability_difficulty_ai_only
+    }
+}
+
+riseandfall_realm_stability_difficulty = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: Normal (1.0x)
+    default = riseandfall_realm_stability_normal
+
+    riseandfall_realm_stability_very_unstable = {
+        flag = riseandfall_realm_stability_very_unstable
+    }
+
+    riseandfall_realm_stability_unstable = {
+        flag = riseandfall_realm_stability_unstable
+    }
+
+    riseandfall_realm_stability_slightly_unstable = {
+        flag = riseandfall_realm_stability_slightly_unstable
+    }
+
+    riseandfall_realm_stability_normal = {
+        flag = riseandfall_realm_stability_normal
+    }
+
+    riseandfall_realm_stability_slightly_stable = {
+        flag = riseandfall_realm_stability_slightly_stable
+    }
+
+    riseandfall_realm_stability_stable = {
+        flag = riseandfall_realm_stability_stable
+    }
+
+    riseandfall_realm_stability_very_stable = {
+        flag = riseandfall_realm_stability_very_stable
+    }
+}
+
+riseandfall_low_stability_events = {
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled
+    default = riseandfall_low_stability_events_enabled
+
+    riseandfall_low_stability_events_enabled = {
+    }
+
+    riseandfall_low_stability_events_disabled = {
+        flag = riseandfall_low_stability_events_disabled
+    }
+}
+
+riseandfall_enable_ai_kingdom_creation = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: basic (current AI title creation and handout behavior)
+    default = riseandfall_ai_kingdom_creation_enabled
+
+    riseandfall_ai_kingdom_creation_disabled = {
+        flag = riseandfall_ai_kingdom_creation_disabled
+    }
+
+    riseandfall_ai_kingdom_creation_enabled = {
+    }
+
+    riseandfall_ai_kingdom_creation_advanced = {
+    }
+}
+
+riseandfall_vassal_limit_rule = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: disabled
+    default = riseandfall_vassal_limit_enabled
+
+    riseandfall_vassal_limit_enabled = {
+    }
+
+    riseandfall_vassal_limit_disabled = {
+        flag = riseandfall_vassal_limit_disabled
+    }
+}
+
+riseandfall_admin_score_nerf = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: disabled (admin succession scoring is unmodified by default)
+    default = riseandfall_admin_score_nerf_enabled
+
+    riseandfall_admin_score_nerf_enabled = {
+    }
+
+    riseandfall_admin_score_nerf_disabled = {
+        flag = riseandfall_admin_score_nerf_disabled
+    }
+}
+
+riseandfall_enable_bordergore_fix = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled
+    default = riseandfall_bordergore_fix_disabled
+
+    riseandfall_bordergore_fix_enabled = {
+    }
+
+    riseandfall_bordergore_fix_disabled = {
+        flag = riseandfall_bordergore_fix_disabled
+    }
+}
+
+riseandfall_enable_dynamic_story_mode = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: off
+
+    default = riseandfall_dynamic_story_mode_off
+
+    riseandfall_dynamic_story_mode_off = {
+        flag = riseandfall_dynamic_story_mode_off
+    }
+
+    riseandfall_dynamic_story_mode_dynamic = {
+    }
+
+    riseandfall_dynamic_story_mode_forced = {
+    }
+}
+
+riseandfall_enable_interaction_stability = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled (show stability in interaction menu)
+    default = riseandfall_interaction_stability_disabled
+
+    riseandfall_interaction_stability_enabled = {
+    }
+
+    riseandfall_interaction_stability_disabled = {
+        flag = riseandfall_interaction_stability_disabled
+    }
+}
+
+riseandfall_enable_war_enhancement = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: enabled (war enhancement mechanics active)
+    default = riseandfall_war_enhancement_disabled
+
+    riseandfall_war_enhancement_enabled = {
+    }
+
+    riseandfall_war_enhancement_disabled = {
+        flag = riseandfall_war_enhancement_disabled
+    }
+}
+
+riseandfall_lite_mode = {
+
+    categories = {
+        riseandfall
+    }
+
+    # Default: disabled (lighter experience with some systems turned off)
+    default = riseandfall_lite_mode_disabled
+
+    riseandfall_lite_mode_enabled = {
+    }
+
+    riseandfall_lite_mode_disabled = {
+        flag = riseandfall_lite_mode_disabled
+    }
+}

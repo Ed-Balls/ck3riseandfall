@@ -1,0 +1,393 @@
+﻿namespace = palace_coup
+
+# Initial palace coup event: Sets up the challenger selection and confronts the ruler with the coup attempt
+palace_coup.1001 = {
+	type = character_event
+	title = palace_coup.1001.t
+	desc = palace_coup.1001.desc
+	theme = court
+
+	left_portrait = {
+		character = root
+	}
+	right_portrait = {
+		character = scope:challenger
+	}
+
+	immediate = {
+		riseandfall_palace_coup_setup = yes
+	}
+
+	# Option to confront the challenger
+	option = {
+		name = palace_coup.1001.a
+		custom_tooltip = palace_coup.1001.tooltip
+		trigger = { exists = scope:challenger }
+		# Ask a player challenger for confirmation, otherwise continue directly.
+		if = {
+			limit = { exists = scope:potential_challenger }
+			scope:potential_challenger = { trigger_event = { id = palace_coup.1101 } }
+		}
+		else = {
+			trigger_event = { id = palace_coup.1002 }
+		}
+		ai_chance = { base = 100 }
+	}
+
+}
+
+# Player confirmation event: Asks the player challenger if they want to proceed with the palace coup
+palace_coup.1101 = {
+	type = character_event
+	title = palace_coup.1101.t
+	desc = palace_coup.1101.d
+	theme = court
+
+	left_portrait = {
+		character = scope:event_root
+	}
+	right_portrait = {
+		character = root
+	}
+
+	option = {
+		name = palace_coup.1101.a
+		custom_tooltip = palace_coup.1101.tooltip
+		# Accept the palace coup
+		root = { save_scope_as = challenger }
+		scope:event_root = { trigger_event = { id = palace_coup.1002 } }
+		ai_chance = { base = 0 }  # Players only
+	}
+
+	option = {
+		name = palace_coup.1101.b
+		custom_tooltip = palace_coup.1101.tooltip_no
+		trigger = {
+			exists = scope:challenger
+			NOT = { this = scope:challenger }
+		}
+		# Decline, use backup challenger
+		scope:event_root = { trigger_event = { id = palace_coup.1002 } }
+		ai_chance = { base = 100 }
+	}
+}
+
+# Player direct-vassal choice during the fleeing-ruler branch.
+palace_coup.1201 = {
+	type = character_event
+	title = palace_coup.1201.t
+	desc = palace_coup.1201.d
+	theme = realm
+
+	trigger = {
+		has_character_flag = rf_palace_coup_pending_choice
+		has_variable = rf_palace_coup_choice_ruler
+		has_variable = rf_palace_coup_choice_challenger
+	}
+
+	immediate = {
+		if = {
+			limit = { has_variable = rf_palace_coup_choice_ruler }
+			var:rf_palace_coup_choice_ruler = { save_scope_as = palace_coup_choice_ruler }
+		}
+		if = {
+			limit = { has_variable = rf_palace_coup_choice_challenger }
+			var:rf_palace_coup_choice_challenger = { save_scope_as = palace_coup_choice_challenger }
+		}
+	}
+
+	left_portrait = {
+		character = scope:palace_coup_choice_ruler
+	}
+	right_portrait = {
+		character = scope:palace_coup_choice_challenger
+	}
+
+	option = {
+		name = palace_coup.1201.a
+		custom_tooltip = palace_coup.1201.a.tooltip
+		hidden_effect = {
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_ruler }
+				var:rf_palace_coup_choice_ruler = { save_scope_as = palace_coup_choice_ruler }
+			}
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_challenger }
+				var:rf_palace_coup_choice_challenger = { save_scope_as = palace_coup_choice_challenger }
+			}
+			root = { riseandfall_palace_coup_mark_loyalist_se = yes }
+			if = {
+				limit = { exists = scope:palace_coup_choice_ruler }
+				scope:palace_coup_choice_ruler = { riseandfall_palace_coup_continue_player_choices = yes }
+			}
+		}
+		ai_chance = { base = 0 }
+	}
+
+	option = {
+		name = palace_coup.1201.b
+		custom_tooltip = palace_coup.1201.b.tooltip
+		hidden_effect = {
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_ruler }
+				var:rf_palace_coup_choice_ruler = { save_scope_as = palace_coup_choice_ruler }
+			}
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_challenger }
+				var:rf_palace_coup_choice_challenger = { save_scope_as = palace_coup_choice_challenger }
+			}
+			root = { riseandfall_palace_coup_mark_coup_se = yes }
+			if = {
+				limit = { exists = scope:palace_coup_choice_ruler }
+				scope:palace_coup_choice_ruler = { riseandfall_palace_coup_continue_player_choices = yes }
+			}
+		}
+		ai_chance = { base = 0 }
+	}
+
+	option = {
+		name = palace_coup.1201.c
+		custom_tooltip = palace_coup.1201.c.tooltip
+		hidden_effect = {
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_ruler }
+				var:rf_palace_coup_choice_ruler = { save_scope_as = palace_coup_choice_ruler }
+			}
+			if = {
+				limit = { has_variable = rf_palace_coup_choice_challenger }
+				var:rf_palace_coup_choice_challenger = { save_scope_as = palace_coup_choice_challenger }
+			}
+			root = { riseandfall_palace_coup_mark_reject_se = yes }
+			if = {
+				limit = { exists = scope:palace_coup_choice_ruler }
+				scope:palace_coup_choice_ruler = { riseandfall_palace_coup_continue_player_choices = yes }
+			}
+		}
+		ai_chance = { base = 0 }
+	}
+}
+
+# Main confrontation event: Ruler chooses whether to submit or slip away and raise a revolt
+palace_coup.1002 = {
+	type = character_event
+	title = palace_coup.1002.t
+	desc = palace_coup.1002.d
+	theme = court
+
+	left_portrait = {
+		character = root
+	}
+	right_portrait = {
+		character = scope:challenger
+	}
+
+	option = {
+		name = palace_coup.1002.a
+		custom_tooltip = palace_coup.1002.surrender.tooltip
+		trigger = { exists = scope:challenger }
+		hidden_effect = { riseandfall_palace_coup_become_puppet = yes }
+
+		ai_chance = {
+			base = 50
+			modifier = { add = 45 root = { has_trait = craven } }
+			modifier = { add = 35 root = { has_trait = content } }
+			modifier = { add = 20 root = { has_trait = trusting } }
+			modifier = { add = 25 root = { is_adult = no } }
+			modifier = { add = 25 root.current_military_strength < scope:challenger.current_military_strength }
+			modifier = { add = 15 root = { realm_size < 12 } }
+			modifier = { add = -45 root = { has_trait = ambitious } }
+			modifier = { add = -30 root = { has_trait = brave } }
+			modifier = { add = -25 root = { has_trait = vengeful } }
+			modifier = { add = -15 root = { has_trait = arrogant } }
+			modifier = { add = -25 root.current_military_strength > scope:challenger.current_military_strength }
+			modifier = { add = -15 root = { realm_size >= 20 } }
+		}
+	}
+
+	option = {
+		name = palace_coup.1002.b
+		custom_tooltip = palace_coup.1002.rebellion.tooltip
+		trigger = {
+			exists = scope:challenger
+			# One-county realms cannot split into a retreat state, so they must submit.
+			realm_size > 1
+		}
+		hidden_effect = { riseandfall_palace_coup_start_rebellion = yes }
+
+		ai_chance = {
+			base = 50
+			modifier = { add = 45 root = { has_trait = ambitious } }
+			modifier = { add = 35 root = { has_trait = brave } }
+			modifier = { add = 25 root = { has_trait = vengeful } }
+			modifier = { add = 15 root = { has_trait = arrogant } }
+			modifier = { add = 25 root.current_military_strength > scope:challenger.current_military_strength }
+			modifier = { add = 15 root = { realm_size >= 20 } }
+			modifier = { add = -45 root = { has_trait = craven } }
+			modifier = { add = -30 root = { has_trait = content } }
+			modifier = { add = -20 root = { has_trait = trusting } }
+			modifier = { add = -25 root = { is_adult = no } }
+			modifier = { add = -25 root.current_military_strength < scope:challenger.current_military_strength }
+			modifier = { add = -15 root = { realm_size < 12 } }
+		}
+	}
+}
+
+# Rebellion event: The ruler slips away and turns the coup into a wider civil war
+palace_coup.1003 = {
+	type = character_event
+	title = palace_coup.1003.t
+	desc = palace_coup.1003.d
+	theme = court
+
+    left_portrait = {
+		character = root
+	}
+
+	option = {
+		name = palace_coup.1003.a
+		custom_tooltip = palace_coup.1003.tooltip
+		# Call the banners / raise the vassal levy
+		ai_chance = { base = 100 }
+	}
+}
+
+# Surrender event: Notification that the ruler now continues only as a puppet
+palace_coup.1004 = {
+	type = character_event
+	title = palace_coup.1004.t
+	desc = palace_coup.1004.d
+	theme = court
+
+	left_portrait = { character = root }
+	right_portrait = { character = scope:challenger }
+
+	option = {
+		name = palace_coup.1004.a
+		custom_tooltip = palace_coup.1004.tooltip
+		hidden_effect = {
+			# Ensure puppet regency is active and challenger is set as diarch (defensive)
+			if = { limit = { NOT = { root = { has_active_diarchy = yes } } } root = { try_start_diarchy = puppet_regency } }
+			if = {
+				limit = { root = { has_active_diarchy = yes } }
+				root = {
+					# Only set diarch when challenger can be a valid puppet master courtier.
+					if = {
+						limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } }
+						scope:challenger = {
+							# Ensure the diarch is not employed by the challenger; as puppet master they must be in root's court.
+							if = { limit = { NOT = { employer = root } } set_employer = root }
+							every_courtier = {
+								limit = { is_alive = yes NOT = { employer = root } }
+								set_employer = root
+							}
+						}
+						set_diarch = scope:challenger
+						set_diarchy_type = puppet_regency
+						set_diarchy_swing = 90
+						riseandfall_sync_puppet_master_court_position = yes
+					}
+				}
+			}
+		}
+		ai_chance = { base = 100 }
+	}
+}
+
+# Puppeted after failed escape: Notification that the ruler's escape failed and they are now puppeted
+palace_coup.1005 = {
+	type = character_event
+	title = palace_coup.1005.t
+	desc = palace_coup.1005.d
+	theme = court
+
+	left_portrait = { character = root }
+	right_portrait = { character = scope:challenger }
+
+	option = {
+		name = palace_coup.1005.a
+		custom_tooltip = palace_coup.1005.tooltip
+		hidden_effect = {
+			# Defensive: ensure puppet regency exists and challenger set as diarch
+			if = { limit = { NOT = { root = { has_active_diarchy = yes } } } root = { try_start_diarchy = puppet_regency } }
+			if = {
+				limit = { root = { has_active_diarchy = yes } }
+				root = {
+					set_diarch = scope:challenger
+					set_diarchy_type = puppet_regency
+					set_diarchy_swing = 90
+					riseandfall_sync_puppet_master_court_position = yes
+				}
+			}
+		}
+		ai_chance = { base = 100 }
+	}
+
+}
+
+# Challenger loses duel: Notification to challenger that they lost the duel and will die
+palace_coup.2001 = {
+	type = character_event
+	title = palace_coup.2001.t
+	desc = palace_coup.2001.d
+	theme = court
+
+	left_portrait = { character = scope:event_root }
+	right_portrait = { character = root }
+
+	option = {
+		name = palace_coup.2001.a
+		custom_tooltip = palace_coup.2001.tooltip
+		ai_chance = { base = 100 }
+	}
+}
+
+# Challenger notification: The ruler submitted and now reigns only as a puppet
+palace_coup.2002 = {
+	type = character_event
+	title = palace_coup.2002.t
+	desc = palace_coup.2002.d
+	theme = court
+
+	left_portrait = { character = scope:event_root }
+	right_portrait = { character = root }
+
+	option = {
+		name = palace_coup.2002.a
+		custom_tooltip = palace_coup.2002.tooltip
+		ai_chance = { base = 100 }
+	}
+}
+
+# Challenger notification: The ruler escaped and is rallying a rebellion
+palace_coup.2003 = {
+	type = character_event
+	title = palace_coup.2003.t
+	desc = palace_coup.2003.d
+	theme = court
+
+	left_portrait = { character = scope:event_root }
+	right_portrait = { character = root }
+
+	option = {
+		name = palace_coup.2003.a
+		custom_tooltip = palace_coup.2003.tooltip
+		ai_chance = { base = 100 }
+	}
+}
+
+# Root's escape fails: Notification to challenger that they caught the ruler and puppeted them
+palace_coup.2004 = {
+	type = character_event
+	title = palace_coup.2004.t
+	desc = palace_coup.2004.d
+	theme = court
+
+	left_portrait = { character = scope:event_root }
+	right_portrait = { character = root }
+
+	option = {
+		name = palace_coup.2004.a
+		custom_tooltip = palace_coup.2004.tooltip
+		ai_chance = { base = 100 }
+	}
+}

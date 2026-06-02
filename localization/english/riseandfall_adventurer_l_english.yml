@@ -1,0 +1,74 @@
+﻿l_english:
+ # Title names
+ riseandfall_adventurer_title_name: "[adventurer_child.GetNamePossessive] Legitimists Army"
+
+# Player-specific title name (used when a player creates their own camp)
+riseandfall_adventurer_title_name_player: "[actor.GetNamePossessive] Legitimists Army"
+
+ # Army names
+ riseandfall_adventurer_host_name: "[adventurer_child.GetFirstNamePossessiveNoTooltip] Host"
+riseandfall_adventurer_respawn_army_name: "Reinforcements"
+
+	# Modifier names and descriptions
+ riseandfall_adventurer_gold_mod: "Adventurer Wealth"
+ riseandfall_adventurer_gold_mod_desc: "Adventurer's monthly income scales by the power of the realm."
+
+# Modifier for yearly men-at-arms limit increase
+riseandfall_yearly_maa_limit_increase_modifier: "Expanded Men-at-Arms Cap"
+riseandfall_yearly_maa_limit_increase_modifier_desc: "Sets the realm's men-at-arms cap to 1000 while this modifier is active."
+
+# Modifier for yearly men-at-arms cap increase (administrative governments)
+riseandfall_yearly_maa_limit_cap_increase_modifier: "Administrative Men-at-Arms Cap Increase"
+riseandfall_yearly_maa_limit_cap_increase_modifier_desc: "Increases the realm men-at-arms cap for administrative governments."
+
+# Vassal limit bonus applied to non-independent rulers
+riseandfall_vassal_limit_bonus: "Vassal Limit Bonus"
+riseandfall_vassal_limit_bonus_desc: "A small permanent increase to vassal limit granted to non-independent rulers by Rise and Fall."
+
+# Reason key for becoming a rival
+riseandfall_adventurer_became_rival: "Became rival due to adventurer uprising"
+
+# Adventurer Camp Created Message
+riseandfall_adventurer_camp_created_title: "Legitimist Revolt Brewing"
+riseandfall_adventurer_camp_created_desc: "Dark clouds gather as [adventurer_child.GetName] raises a pretender's banner, claiming titles rightfully yours. A storm of rebellion threatens your throne."
+
+# Interaction Notifications
+riseandfall_create_adventurer_camp_notification_title:0 "You have created an Adventurer Camp"
+riseandfall_create_adventurer_camp_notification:0 "You have left your court and raised an adventurer camp in your name. Press dynamic claims to start campaigns and expand your influence."
+riseandfall_create_adventurer_camp_notification_tooltip:0 "You have become an adventurer, leading a landless host prepared to press claims and raid for fortune."
+
+# Interaction label & description for character interaction menu (legacy decision keys kept for decisions)
+riseandfall_create_adventurer_camp_interaction:0 "Create Adventurer Camp"
+riseandfall_create_adventurer_camp_interaction_desc:0 "Gather your followers and raise a landless adventurer camp: you will become an adventurer leading a small host. This will mark you as an adventurer and allow adventurer mechanics to trigger."
+
+# Adventurer Chance Tooltip
+ADVENTURER_CHANCE_TOOLTIP:0 "#bold Adventurer Chance#!\nFinal Chance: [Character.MakeScope.Var('rf_adventurer_final_chance').GetValue|1]%\n\n#bold Base Components#!\nBase Chance: [Character.MakeScope.Var('rf_adventurer_base_chance').GetValue|1]%\nTrait Bonuses: [Character.MakeScope.Var('rf_adventurer_trait_chance').GetValue|1]%\nIntrigue Bonus: [Character.MakeScope.Var('intrigue_bonus').GetValue|1]%\n\n#bold Opinion Factors#!\nOpinion: [Character.MakeScope.Var('rf_opinion_adjust').GetValue|2]%\n\n#bold Sex-based Penalty#!\nSex Penalty: [Character.MakeScope.Var('rf_sex_penalty').GetValue|1]%\n\n#bold Realm Stability Modifier#!\nStability Modifier: [Character.MakeScope.Var('rf_stability_modifier').GetValue|2]%"
+
+ # ── Adventurer Chance widget keys (rf_adventurer_tooltip.gui) ───────────────
+ ADVENTURER_CHANCE_TT_TITLE:0 "Adventurer Uprising Chance"
+ ADVENTURER_CHANCE_TT_RISK_STATUS:0 "Current chance: [Character.MakeScope.Var('rf_adventurer_final_chance').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_TRACK_TITLE:0 "Uprising Risk"
+ ADVENTURER_CHANCE_TT_FINAL:0 "#bold Final Chance#!\nCombined chance this character will launch an adventurer uprising:\n[Character.MakeScope.Var('rf_adventurer_final_chance').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_BASE:0 "#bold Base Components#!\nBase Chance: [Character.MakeScope.Var('rf_adventurer_base_chance').GetValue|1]%\nTrait Bonuses: +[Character.MakeScope.Var('rf_adventurer_trait_chance').GetValue|1]%\nIntrigue Bonus: +[Character.MakeScope.Var('intrigue_bonus').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_OPINION:0 "#bold Opinion Factor#!\nOpinion adjustment: [Character.MakeScope.Var('rf_opinion_adjust').GetValue|2]%"
+ ADVENTURER_CHANCE_TT_SEX_PENALTY:0 "#bold Sex-based Penalty#!\nSex Penalty: [Character.MakeScope.Var('rf_sex_penalty').GetValue|1]%"
+ADVENTURER_CHANCE_TT_STABILITY:0 "#bold Realm Stability Modifier#!\nStability Modifier: [Character.MakeScope.Var('rf_stability_modifier').GetValue|2]%"
+ ADVENTURER_CHANCE_TT_FINAL_VALUE:0 "[Character.MakeScope.Var('rf_adventurer_final_chance').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_BASE_HEADER:0 "Base Components"
+ ADVENTURER_CHANCE_TT_BASE_CHANCE_L:0 "Game rule base"
+ ADVENTURER_CHANCE_TT_BASE_CHANCE_R:0 "[Character.MakeScope.Var('rf_adventurer_base_chance').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_TRAIT_BONUS_L:0 "Trait bonuses"
+ ADVENTURER_CHANCE_TT_TRAIT_BONUS_R:0 "[Character.MakeScope.Var('rf_adventurer_trait_chance').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_INTRIGUE_L:0 "Intrigue"
+ ADVENTURER_CHANCE_TT_INTRIGUE_R:0 "[Character.MakeScope.Var('intrigue_bonus').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_OPINION_HEADER:0 "Opinion Factors"
+ ADVENTURER_CHANCE_TT_OPINION_L:0 "Opinion adjustment"
+ ADVENTURER_CHANCE_TT_OPINION_R:0 "[Character.MakeScope.Var('rf_opinion_adjust').GetValue|2]%"
+ ADVENTURER_CHANCE_TT_SEX_HEADER:0 "Gender Law"
+ ADVENTURER_CHANCE_TT_SEX_L:0 "Sex penalty"
+ ADVENTURER_CHANCE_TT_SEX_R:0 "[Character.MakeScope.Var('rf_sex_penalty').GetValue|1]%"
+ ADVENTURER_CHANCE_TT_STABILITY_HEADER:0 "Realm Stability"
+ ADVENTURER_CHANCE_TT_STABILITY_L:0 "Stability modifier"
+ ADVENTURER_CHANCE_TT_STABILITY_R:0 "[Character.MakeScope.Var('rf_stability_modifier').GetValue|2]%"
+
+    

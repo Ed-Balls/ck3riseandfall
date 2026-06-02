@@ -1,0 +1,233 @@
+﻿##################################################
+# Rise and Fall — Puppet Master scripted triggers
+# NOTE: Some of these are placeholders; replace with your canonical diarchy/regency tokens.
+
+# Is the actor the (current) diarch of the recipient
+riseandfall_is_actor_diarch_of_recipient = {
+	# Expected scopes: root = actor (diarch), recipient = liege
+	# TODO: Replace with your canonical trigger (e.g., riseandfall_is_current_diarch_of_recipient)
+	# Stubbed to always for now to avoid invalid base tokens
+	always = yes
+}
+
+# Is a Puppet Regency active on the recipient
+# Uses liege_modifier name from puppet_regency definition: "Puppet"
+riseandfall_liege_has_puppet_regency = {
+	# TODO: Replace with your canonical regency/diarchy check (e.g., has_diarchy_type = puppet_regency)
+	always = yes
+}
+
+# Liege stability below 30 (recipient variable)
+riseandfall_liege_stability_below_30 = {
+	# Actual condition: check recipient's stored stability score
+	scope:recipient = {
+		# Guard against unset variable to avoid engine errors when stability hasn't been initialized
+		has_variable = riseandfall_realm_stability_score
+		var:riseandfall_realm_stability_score < 30
+	}
+	# Show a friendly tooltip when this trigger fails
+	custom_tooltip = {
+		text = riseandfall_liege_stability_below_30
+		scope:recipient = {
+			has_variable = riseandfall_realm_stability_score
+			var:riseandfall_realm_stability_score < 30
+		}
+	}
+}
+
+# Liege stability below 50 (recipient variable)
+riseandfall_liege_stability_below_50 = {
+	# Actual condition: check recipient's stored stability score
+	scope:recipient = {
+		has_variable = riseandfall_realm_stability_score
+		var:riseandfall_realm_stability_score < 50
+	}
+	# Show a friendly tooltip when this trigger fails
+	custom_tooltip = {
+		text = riseandfall_liege_stability_below_50
+		scope:recipient = {
+			has_variable = riseandfall_realm_stability_score
+			var:riseandfall_realm_stability_score < 50
+		}
+	}
+}
+
+
+
+# Liege has more than 0 gold
+riseandfall_liege_has_gold = {
+	# Actual condition: recipient must have positive gold
+	scope:recipient = { gold > 0 }
+	# Friendly failure text when liege has no gold
+	custom_tooltip = {
+		text = riseandfall_liege_has_gold
+		scope:recipient = { gold > 0 }
+	}
+}
+
+# No existing hook on recipient (check in recipient scope whether they have a hook on the actor/root)
+riseandfall_no_existing_hook = {
+	# Actual condition: recipient should NOT already have a hook on the actor
+	scope:recipient = { NOT = { has_hook = scope:actor } }
+	# Friendly failure text when the recipient already has a hook on the actor
+	custom_tooltip = {
+		text = riseandfall_no_existing_hook
+		scope:recipient = { NOT = { has_hook = scope:actor } }
+	}
+}
+
+# No low stability cooldown on actor
+riseandfall_no_low_stability_cooldown = {
+	# Actual condition: recipient has no low-stability cooldown flag.
+	scope:recipient = { NOT = { has_character_flag = rf_low_stability_cooldown } }
+	# Friendly failure text for low stability cooldown checks
+	custom_tooltip = {
+		text = riseandfall_no_low_stability_cooldown
+		scope:recipient = { NOT = { has_character_flag = rf_low_stability_cooldown } }
+	}
+}
+
+# Puppet regency years — require the recipient to have been a puppet regent for at least 5 years
+# Use this trigger in interactions that require a minimum puppet regency duration.
+riseandfall_puppet_regency_years_at_least_5 = {
+	# Actual condition: recipient must have puppet regency years >= 5
+	scope:recipient = {
+		has_variable = riseandfall_puppet_regency_years
+		var:riseandfall_puppet_regency_years >= 5
+	}
+	# Friendly failure text for UI tooltips
+	custom_tooltip = {
+		text = riseandfall_puppet_regency_years_at_least_5
+		scope:recipient = {
+			has_variable = riseandfall_puppet_regency_years
+			var:riseandfall_puppet_regency_years >= 5
+		}
+	}
+}
+
+# Title scope: eligible county for a puppet master land seizure.
+# Expected scopes: scope:actor = puppet master, scope:recipient = puppet liege.
+riseandfall_puppet_seize_liege_land_eligible_county = {
+	tier = tier_county
+	holder = scope:recipient
+	NOT = { this = scope:recipient.capital_county }
+	NOT = { de_jure_liege ?= scope:recipient.capital_county.de_jure_liege }
+	OR = {
+		riseandfall_puppet_seize_liege_land_in_actor_sphere = yes
+		riseandfall_puppet_seize_liege_land_can_rank_actor = yes
+	}
+}
+
+# Title scope: the county belongs under a title the puppet master already holds.
+riseandfall_puppet_seize_liege_land_in_actor_sphere = {
+	OR = {
+		de_jure_liege ?= { holder = scope:actor }
+		de_jure_liege.de_jure_liege ?= { holder = scope:actor }
+		de_jure_liege.de_jure_liege.de_jure_liege ?= { holder = scope:actor }
+		de_jure_liege.de_jure_liege.de_jure_liege.de_jure_liege ?= { holder = scope:actor }
+	}
+}
+
+# Title scope: the county bundle can give the puppet master a higher primary rank.
+riseandfall_puppet_seize_liege_land_can_rank_actor = {
+	OR = {
+		scope:actor = { NOT = { exists = primary_title } }
+		AND = {
+			de_jure_liege ?= { holder = scope:recipient }
+			scope:recipient = { primary_title.tier > tier_duchy }
+			scope:actor = {
+				OR = {
+					NOT = { exists = primary_title }
+					AND = {
+						exists = primary_title
+						primary_title.tier < tier_duchy
+					}
+				}
+			}
+		}
+		AND = {
+			de_jure_liege.de_jure_liege ?= { holder = scope:recipient }
+			scope:recipient = { primary_title.tier > tier_kingdom }
+			scope:actor = {
+				OR = {
+					NOT = { exists = primary_title }
+					AND = {
+						exists = primary_title
+						primary_title.tier < tier_kingdom
+					}
+				}
+			}
+		}
+		AND = {
+			de_jure_liege.de_jure_liege.de_jure_liege ?= { holder = scope:recipient }
+			scope:recipient = { primary_title.tier > tier_empire }
+			scope:actor = {
+				OR = {
+					NOT = { exists = primary_title }
+					AND = {
+						exists = primary_title
+						primary_title.tier < tier_empire
+					}
+				}
+			}
+		}
+	}
+}
+
+# Character scope: the puppet liege has at least one county the active puppet master may seize.
+riseandfall_puppet_master_has_seizable_liege_land = {
+	custom_tooltip = {
+		text = riseandfall_puppet_master_has_seizable_liege_land
+		scope:recipient = {
+			OR = {
+				any_held_title = {
+					tier = tier_county
+					riseandfall_puppet_seize_liege_land_eligible_county = yes
+				}
+				any_held_title = {
+					tier = tier_duchy
+					NOT = { this ?= scope:recipient.capital_county.de_jure_liege }
+					NOT = { this ?= scope:recipient.primary_title }
+					scope:recipient = { primary_title.tier > tier_duchy }
+					scope:actor = {
+						AND = {
+							exists = primary_title
+							primary_title.tier < tier_duchy
+						}
+					}
+				}
+				any_held_title = {
+					tier = tier_kingdom
+					NOT = { this ?= scope:recipient.capital_county.de_jure_liege.de_jure_liege }
+					NOT = { this ?= scope:recipient.primary_title }
+					scope:recipient = { primary_title.tier > tier_kingdom }
+					scope:actor = {
+						AND = {
+							exists = primary_title
+							primary_title.tier < tier_kingdom
+						}
+					}
+				}
+				any_held_title = {
+					tier = tier_empire
+					NOT = { this ?= scope:recipient.capital_county.de_jure_liege.de_jure_liege.de_jure_liege }
+					NOT = { this ?= scope:recipient.primary_title }
+					scope:recipient = { primary_title.tier > tier_empire }
+					scope:actor = {
+						AND = {
+							exists = primary_title
+							primary_title.tier < tier_empire
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+# Liege has poor or worse health
+# UI labels health as 'Poor' for any value < fine_health (3); poor_health (1) is the dying threshold.
+# Must be called from within a scope:recipient = { } block
+riseandfall_liege_has_poor_health = {
+	health < fine_health
+}

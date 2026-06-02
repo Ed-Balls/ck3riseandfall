@@ -1,0 +1,2350 @@
+﻿##########################
+# Rise and Fall - Low Stability Events Scripted Effects
+# Contains scripted effects related to low stability events
+# Selects a court challenger and resolves the simplified palace coup outcomes
+
+riseandfall_palace_coup_score_challenger_candidate = {
+    save_scope_as = palace_coup_candidate
+
+    # Puppet regencies are stabilized by the diarch's stats, but a coup leader needs soldiers.
+    # Martial is weighted twice; the other four stats still matter for puppet stability.
+    set_variable = { name = candidate_total value = diplomacy }
+    change_variable = { name = candidate_total add = martial }
+    change_variable = { name = candidate_total add = martial }
+    change_variable = { name = candidate_total add = stewardship }
+    change_variable = { name = candidate_total add = intrigue }
+    change_variable = { name = candidate_total add = learning }
+
+    if = {
+        limit = { exists = global_var:riseandfall_avg_total }
+        set_variable = { name = tmp_candidate_stat_edge value = var:candidate_total }
+        change_variable = { name = tmp_candidate_stat_edge divide = 6 }
+        set_variable = { name = tmp_candidate_stat_baseline value = global_var:riseandfall_avg_total }
+        change_variable = { name = tmp_candidate_stat_baseline multiply = -1 }
+        change_variable = { name = tmp_candidate_stat_edge add = var:tmp_candidate_stat_baseline }
+        change_variable = { name = tmp_candidate_stat_edge multiply = 3 }
+        change_variable = { name = candidate_total add = var:tmp_candidate_stat_edge }
+        remove_variable = tmp_candidate_stat_baseline
+        remove_variable = tmp_candidate_stat_edge
+    }
+
+    # Real institutional power makes outsider challengers much more plausible.
+    if = {
+        limit = { is_councillor_of = scope:event_root }
+        change_variable = { name = candidate_total add = 45 }
+    }
+    else_if = {
+        limit = { any_court_position_employer = { this = scope:event_root } }
+        change_variable = { name = candidate_total add = 20 }
+    }
+    if = { limit = { is_knight = yes } change_variable = { name = candidate_total add = 15 } }
+
+    if = {
+        limit = { scope:tmp_primary_title = { exists = yes } }
+        if = {
+            limit = { has_claim_on = scope:tmp_primary_title }
+            change_variable = { name = candidate_total add = 30 }
+            change_variable = { name = candidate_total multiply = 1.25 }
+        }
+        if = {
+            limit = { has_strong_claim_on = scope:tmp_primary_title }
+            change_variable = { name = candidate_total add = 25 }
+            change_variable = { name = candidate_total multiply = 1.15 }
+        }
+    }
+
+    # Judge legitimacy against the capital culture, not necessarily the current ruler's culture.
+    if = {
+        limit = { scope:event_root.capital_county.culture ?= { always = yes } }
+        if = {
+            limit = { culture ?= scope:event_root.capital_county.culture }
+            change_variable = { name = candidate_total multiply = 1.25 }
+        }
+        else_if = {
+            limit = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 80
+                    }
+                }
+            }
+            change_variable = { name = candidate_total multiply = 1.18 }
+        }
+        else_if = {
+            limit = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 70
+                    }
+                }
+            }
+            change_variable = { name = candidate_total multiply = 1.12 }
+        }
+        else_if = {
+            limit = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 50
+                    }
+                }
+            }
+            change_variable = { name = candidate_total add = -10 }
+        }
+        else_if = {
+            limit = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 30
+                    }
+                }
+            }
+            change_variable = { name = candidate_total add = -35 }
+        }
+        else = {
+            change_variable = { name = candidate_total add = -65 }
+        }
+    }
+
+    # Faith fit also follows the capital. Astray faiths can work; hostile faiths need power.
+    if = {
+        limit = { scope:event_root.capital_county.faith ?= { always = yes } }
+        if = {
+            limit = { faith ?= scope:event_root.capital_county.faith }
+            change_variable = { name = candidate_total multiply = 1.25 }
+        }
+        else_if = {
+            limit = {
+                faith = {
+                    faith_hostility_level = {
+                        target = scope:event_root.capital_county.faith
+                        value <= faith_astray_level
+                    }
+                }
+            }
+            change_variable = { name = candidate_total multiply = 1.12 }
+        }
+        else_if = {
+            limit = {
+                faith = {
+                    faith_hostility_level = {
+                        target = scope:event_root.capital_county.faith
+                        value >= faith_evil_level
+                    }
+                }
+            }
+            change_variable = { name = candidate_total add = -75 }
+        }
+        else_if = {
+            limit = {
+                faith = {
+                    faith_hostility_level = {
+                        target = scope:event_root.capital_county.faith
+                        value = faith_hostile_level
+                    }
+                }
+            }
+            change_variable = { name = candidate_total add = -45 }
+        }
+        else = {
+            change_variable = { name = candidate_total add = -25 }
+        }
+    }
+
+    # A hostile outsider without office should almost never be the palace faction's face.
+    if = {
+        limit = {
+            scope:event_root.capital_county.culture ?= { always = yes }
+            NOT = { culture ?= scope:event_root.capital_county.culture }
+            NOT = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 70
+                    }
+                }
+            }
+        }
+        if = {
+            limit = { is_councillor_of = scope:event_root }
+            change_variable = { name = candidate_total add = -15 }
+        }
+        else_if = {
+            limit = { any_court_position_employer = { this = scope:event_root } }
+            change_variable = { name = candidate_total add = -35 }
+        }
+        else = {
+            change_variable = { name = candidate_total add = -80 }
+        }
+    }
+    if = {
+        limit = {
+            scope:event_root.capital_county.faith ?= { always = yes }
+            NOT = { faith ?= scope:event_root.capital_county.faith }
+            NOT = {
+                faith = {
+                    faith_hostility_level = {
+                        target = scope:event_root.capital_county.faith
+                        value <= faith_astray_level
+                    }
+                }
+            }
+        }
+        if = {
+            limit = { is_councillor_of = scope:event_root }
+            change_variable = { name = candidate_total add = -20 }
+        }
+        else_if = {
+            limit = { any_court_position_employer = { this = scope:event_root } }
+            change_variable = { name = candidate_total add = -45 }
+        }
+        else = {
+            change_variable = { name = candidate_total add = -100 }
+        }
+    }
+    if = {
+        limit = {
+            scope:event_root.capital_county.culture ?= { always = yes }
+            scope:event_root.capital_county.faith ?= { always = yes }
+            NOT = { culture ?= scope:event_root.capital_county.culture }
+            NOT = { faith ?= scope:event_root.capital_county.faith }
+            NOT = {
+                culture = {
+                    cultural_acceptance = {
+                        target = scope:event_root.capital_county.culture
+                        value >= 70
+                    }
+                }
+            }
+            NOT = {
+                faith = {
+                    faith_hostility_level = {
+                        target = scope:event_root.capital_county.faith
+                        value <= faith_astray_level
+                    }
+                }
+            }
+        }
+        if = {
+            limit = { is_councillor_of = scope:event_root }
+            change_variable = { name = candidate_total add = -20 }
+        }
+        else_if = {
+            limit = { any_court_position_employer = { this = scope:event_root } }
+            change_variable = { name = candidate_total add = -60 }
+        }
+        else = {
+            change_variable = { name = candidate_total add = -120 }
+        }
+    }
+
+    # In a genuinely diverse realm, outsider challengers are less surprising.
+    if = {
+        limit = {
+            scope:event_root = { has_variable = riseandfall_rs_culture_faith_component }
+            OR = {
+                AND = {
+                    scope:event_root.capital_county.culture ?= { always = yes }
+                    NOT = { culture ?= scope:event_root.capital_county.culture }
+                }
+                AND = {
+                    scope:event_root.capital_county.faith ?= { always = yes }
+                    NOT = { faith ?= scope:event_root.capital_county.faith }
+                }
+            }
+        }
+        if = {
+            limit = { scope:event_root = { NOT = { var:riseandfall_rs_culture_faith_component >= -19 } } }
+            change_variable = { name = candidate_total add = 50 }
+        }
+        else_if = {
+            limit = { scope:event_root = { NOT = { var:riseandfall_rs_culture_faith_component >= -9 } } }
+            change_variable = { name = candidate_total add = 25 }
+        }
+    }
+
+    # Softer preference laws still matter. Hard sex laws are enforced last as disqualifiers.
+    if = {
+        limit = { scope:event_root = { has_realm_law = female_preference_law } }
+        if = { limit = { NOT = { is_female = yes } } change_variable = { name = candidate_total add = -1000 } }
+    }
+    if = {
+        limit = { scope:event_root = { has_realm_law = male_preference_law } }
+        if = { limit = { NOT = { is_male = yes } } change_variable = { name = candidate_total add = -1000 } }
+    }
+    if = {
+        limit = { scope:event_root = { has_realm_law = male_only_law } }
+        if = { limit = { NOT = { is_male = yes } } set_variable = { name = candidate_total value = -9999 } }
+    }
+    if = {
+        limit = { scope:event_root = { has_realm_law = female_only_law } }
+        if = { limit = { NOT = { is_female = yes } } set_variable = { name = candidate_total value = -9999 } }
+    }
+}
+
+riseandfall_palace_coup_try_challenger_candidate = {
+    riseandfall_palace_coup_score_challenger_candidate = yes
+    save_scope_as = candidate_for_score
+    scope:event_root = { set_variable = { name = tmp_candidate value = scope:candidate_for_score.var:candidate_total } }
+
+    if = {
+        limit = { scope:event_root = { has_variable = tmp_candidate } }
+        if = {
+            limit = { scope:event_root.var:tmp_candidate > scope:event_root.var:tmp_best_challenger_score }
+            save_scope_as = challenger
+            scope:event_root = { set_variable = { name = tmp_best_challenger_score value = scope:event_root.var:tmp_candidate } }
+        }
+    }
+}
+
+riseandfall_palace_coup_setup = {
+    root = {
+        every_held_title = {
+            add_to_list = lost_titles
+        }
+    }
+    # Save the event's root scope under a stable name for cross-scope variable access
+    root = { save_scope_as = event_root }
+
+    # Initialize best challenger score on the saved event_root scope
+    scope:event_root = { set_variable = { name = tmp_best_challenger_score value = -9999 } }
+
+    # Save root's primary title (if any)
+    if = {
+        limit = { root = { primary_title = { exists = yes } } }
+        root = { primary_title = { save_scope_as = tmp_primary_title } }
+    }
+
+    # ---------------------------------------------------------
+    # CHALLENGER SELECTION
+    # ---------------------------------------------------------
+    root = {
+        every_courtier_or_guest = {
+            limit = {
+                is_alive = yes
+                NOT = { is_close_family_of = root }
+                age > 16
+                is_ruler = no
+                NOT = { is_imprisoned = yes }
+                NOT = { is_incapable = yes }
+            }
+            riseandfall_palace_coup_try_challenger_candidate = yes
+        }
+        # Do not select landed rulers as palace coup challengers
+        every_vassal = {
+            limit = {
+                is_councillor_of = scope:event_root
+                is_alive = yes
+                is_ruler = no
+                age > 16
+                NOT = { is_close_family_of = root }
+                NOT = { is_imprisoned = yes }
+                NOT = { is_incapable = yes }
+            }
+            riseandfall_palace_coup_try_challenger_candidate = yes
+        }
+    }
+
+    # ---------------------------------------------------------
+    # FALLBACK CHALLENGER SELECTION
+    # ---------------------------------------------------------
+    if = {
+        limit = { NOT = { exists = scope:challenger } }
+        root = {
+            random_courtier = {
+                limit = {
+                    is_landed = no
+                    is_alive = yes
+                    NOT = { is_close_family_of = scope:event_root }
+                    age > 16
+                    NOT = { is_imprisoned = yes }
+                    NOT = { is_incapable = yes }
+                    OR = {
+                        scope:event_root = {
+                            NOT = { has_realm_law = male_only_law }
+                            NOT = { has_realm_law = female_only_law }
+                        }
+                        AND = {
+                            scope:event_root = { has_realm_law = male_only_law }
+                            is_male = yes
+                        }
+                        AND = {
+                            scope:event_root = { has_realm_law = female_only_law }
+                            is_female = yes
+                        }
+                    }
+                    OR = {
+                        is_councillor_of = scope:event_root
+                        any_court_position_employer = { this = scope:event_root }
+                        AND = {
+                            OR = {
+                                AND = {
+                                    scope:event_root.capital_county.culture ?= { always = yes }
+                                    culture ?= scope:event_root.capital_county.culture
+                                }
+                                AND = {
+                                    scope:event_root.capital_county.culture ?= { always = yes }
+                                    culture = {
+                                        cultural_acceptance = {
+                                            target = scope:event_root.capital_county.culture
+                                            value >= 70
+                                        }
+                                    }
+                                }
+                            }
+                            OR = {
+                                AND = {
+                                    scope:event_root.capital_county.faith ?= { always = yes }
+                                    faith ?= scope:event_root.capital_county.faith
+                                }
+                                AND = {
+                                    scope:event_root.capital_county.faith ?= { always = yes }
+                                    faith = {
+                                        faith_hostility_level = {
+                                            target = scope:event_root.capital_county.faith
+                                            value <= faith_astray_level
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                save_scope_as = challenger
+            }
+        }
+    }
+
+    if = {
+        limit = { NOT = { exists = scope:challenger } }
+        root = {
+            random_courtier = {
+                limit = {
+                    is_landed = no
+                    is_alive = yes
+                    NOT = { is_close_family_of = scope:event_root }
+                    age > 16
+                    NOT = { is_imprisoned = yes }
+                    NOT = { is_incapable = yes }
+                    OR = {
+                        scope:event_root = {
+                            NOT = { has_realm_law = male_only_law }
+                            NOT = { has_realm_law = female_only_law }
+                        }
+                        AND = {
+                            scope:event_root = { has_realm_law = male_only_law }
+                            is_male = yes
+                        }
+                        AND = {
+                            scope:event_root = { has_realm_law = female_only_law }
+                            is_female = yes
+                        }
+                    }
+                }
+                save_scope_as = challenger
+            }
+        }
+    }
+
+    # Last-resort: if no challenger found yet, pick any alive unlanded courtier.
+    if = {
+        limit = { NOT = { exists = scope:challenger } }
+        root = {
+            random_courtier = {
+                limit = { is_adult = yes is_ruler = no NOT = { is_imprisoned = yes } NOT = { is_incapable = yes } }
+                save_scope_as = challenger
+            }
+        }
+    }
+
+    # Handle player challenger: save as potential and find backup challenger
+    if = {
+        limit = { exists = scope:challenger scope:challenger = { is_ai = no } }
+        scope:challenger = { save_scope_as = potential_challenger }
+        clear_saved_scope = challenger
+
+        # Reset score for backup selection
+        scope:event_root = { set_variable = { name = tmp_best_challenger_score value = -9999 } }
+
+        # Re-run selection excluding potential
+        root = {
+            every_courtier_or_guest = {
+                limit = {
+                    is_alive = yes
+                    NOT = { is_close_family_of = root }
+                    age > 16
+                    is_ruler = no
+                    NOT = { is_imprisoned = yes }
+                    NOT = { is_incapable = yes }
+                    NOT = { this = scope:potential_challenger }
+                    is_ai = yes  # Only select AI characters for backup
+                }
+                riseandfall_palace_coup_try_challenger_candidate = yes
+            }
+            # Do not select landed rulers as palace coup challengers
+            every_vassal = {
+                limit = {
+                    is_councillor_of = scope:event_root
+                    is_alive = yes
+                    NOT = { is_close_family_of = root }
+                    age > 16
+                    NOT = { is_imprisoned = yes }
+                    NOT = { is_incapable = yes }
+                    NOT = { this = scope:potential_challenger }
+                    is_ruler = no
+                    is_ai = yes  # Only select AI characters for backup
+                }
+                riseandfall_palace_coup_try_challenger_candidate = yes
+            }
+        }
+
+        # Fallbacks for backup challenger, excluding potential, only AI
+        if = {
+            limit = { NOT = { exists = scope:challenger } }
+            root = {
+                random_courtier = {
+                    limit = {
+                        is_landed = no
+                        is_alive = yes
+                        NOT = { is_close_family_of = scope:event_root }
+                        age > 16
+                        NOT = { this = scope:potential_challenger }
+                        is_ai = yes
+                        NOT = { is_imprisoned = yes }
+                        NOT = { is_incapable = yes }
+                        OR = {
+                            scope:event_root = {
+                                NOT = { has_realm_law = male_only_law }
+                                NOT = { has_realm_law = female_only_law }
+                            }
+                            AND = {
+                                scope:event_root = { has_realm_law = male_only_law }
+                                is_male = yes
+                            }
+                            AND = {
+                                scope:event_root = { has_realm_law = female_only_law }
+                                is_female = yes
+                            }
+                        }
+                        OR = {
+                            is_councillor_of = scope:event_root
+                            any_court_position_employer = { this = scope:event_root }
+                            AND = {
+                                OR = {
+                                    AND = {
+                                        scope:event_root.capital_county.culture ?= { always = yes }
+                                        culture ?= scope:event_root.capital_county.culture
+                                    }
+                                    AND = {
+                                        scope:event_root.capital_county.culture ?= { always = yes }
+                                        culture = {
+                                            cultural_acceptance = {
+                                                target = scope:event_root.capital_county.culture
+                                                value >= 70
+                                            }
+                                        }
+                                    }
+                                }
+                                OR = {
+                                    AND = {
+                                        scope:event_root.capital_county.faith ?= { always = yes }
+                                        faith ?= scope:event_root.capital_county.faith
+                                    }
+                                    AND = {
+                                        scope:event_root.capital_county.faith ?= { always = yes }
+                                        faith = {
+                                            faith_hostility_level = {
+                                                target = scope:event_root.capital_county.faith
+                                                value <= faith_astray_level
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    save_scope_as = challenger
+                }
+            }
+        }
+
+        if = {
+            limit = { NOT = { exists = scope:challenger } }
+            root = {
+                random_courtier = {
+                    limit = {
+                        is_landed = no
+                        is_alive = yes
+                        NOT = { is_close_family_of = scope:event_root }
+                        age > 16
+                        NOT = { this = scope:potential_challenger }
+                        is_ai = yes
+                        NOT = { is_imprisoned = yes }
+                        NOT = { is_incapable = yes }
+                        OR = {
+                            scope:event_root = {
+                                NOT = { has_realm_law = male_only_law }
+                                NOT = { has_realm_law = female_only_law }
+                            }
+                            AND = {
+                                scope:event_root = { has_realm_law = male_only_law }
+                                is_male = yes
+                            }
+                            AND = {
+                                scope:event_root = { has_realm_law = female_only_law }
+                                is_female = yes
+                            }
+                        }
+                    }
+                    save_scope_as = challenger
+                }
+            }
+        }
+
+        # Last-resort for backup: if no challenger found yet, pick any alive unlanded AI courtier, excluding potential.
+        if = {
+            limit = { NOT = { exists = scope:challenger } }
+            root = {
+                random_courtier = {
+                    limit = { 
+                        is_adult = yes 
+                        is_ruler = no
+                        NOT = { this = scope:potential_challenger }
+                        is_ai = yes
+                        NOT = { is_imprisoned = yes }
+                        NOT = { is_incapable = yes }
+                    }
+                    save_scope_as = challenger
+                }
+            }
+        }
+
+        # If no AI backup exists, keep the player as the only valid challenger.
+        # The confirmation event hides the decline option in this case.
+        if = {
+            limit = { NOT = { exists = scope:challenger } }
+            scope:potential_challenger = { save_scope_as = challenger }
+        }
+    }
+
+    # Palace coup resolution no longer creates temporary camps or moves courtiers.
+
+    # ---------------------------------------------------------
+    # COOLDOWNS
+    # ---------------------------------------------------------
+    add_character_flag = { flag = rf_low_stability_cooldown years = 5 }
+
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { add_character_flag = { flag = rf_low_stability_cooldown years = 5 } }
+    }
+}
+
+# Rise and Fall - Palace Coup Submit
+# The ruler yields and remains on the throne only as a puppet
+
+riseandfall_palace_coup_become_puppet = {
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = {
+            scope:challenger = {
+                if = { limit = { NOT = { employer = root } } set_employer = root }
+                every_courtier = {
+                    limit = { is_alive = yes NOT = { employer = root } }
+                    set_employer = root
+                }
+            }
+            try_start_diarchy = puppet_regency
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+
+    else_if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            root = { has_active_diarchy = yes }
+        }
+        root = {
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+
+    root = { trigger_event = { id = palace_coup.1004 } }
+
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { trigger_event = { id = palace_coup.2002 } }
+    }
+}
+
+##########################
+# Rise and Fall - Palace Coup Rebellion
+# The challenger seizes the throne and the deposed ruler immediately raises a claim war
+
+riseandfall_palace_coup_clear_vassal_choice_se = {
+    remove_character_flag = rf_palace_coup_split_protected
+    remove_character_flag = rf_palace_coup_return_to_ruler
+    remove_character_flag = rf_palace_coup_neutral_rejector
+    remove_character_flag = rf_palace_coup_neutral_seed
+    remove_character_flag = rf_palace_coup_retreat_anchor
+    remove_character_flag = rf_palace_coup_pending_choice
+    remove_variable = rf_palace_coup_choice_ruler
+    remove_variable = rf_palace_coup_choice_challenger
+    remove_variable = rf_palace_coup_loyalist_score
+    remove_variable = rf_palace_coup_coup_score
+    remove_variable = rf_palace_coup_reject_score
+}
+
+riseandfall_palace_coup_mark_loyalist_se = {
+    riseandfall_palace_coup_clear_vassal_choice_se = yes
+    add_character_flag = { flag = rf_palace_coup_split_protected days = 30 }
+    add_character_flag = { flag = rf_palace_coup_return_to_ruler days = 30 }
+    add_character_flag = { flag = rf_palace_coup_retreat_anchor days = 30 }
+}
+
+riseandfall_palace_coup_mark_coup_se = {
+    riseandfall_palace_coup_clear_vassal_choice_se = yes
+    add_character_flag = { flag = rf_palace_coup_split_protected days = 30 }
+}
+
+riseandfall_palace_coup_mark_reject_se = {
+    riseandfall_palace_coup_clear_vassal_choice_se = yes
+    add_character_flag = { flag = rf_palace_coup_neutral_rejector days = 30 }
+}
+
+riseandfall_palace_coup_mark_neutral_seed_se = {
+    add_character_flag = { flag = rf_palace_coup_neutral_seed days = 30 }
+    add_character_flag = { flag = rf_forced_breakaway_seed days = 30 }
+}
+
+riseandfall_palace_coup_seed_neutral_rejectors_se = {
+    save_scope_as = palace_coup_challenger
+
+    # Claimants and major military powers are strong enough to reject both camps outright.
+    every_vassal = {
+        limit = {
+            is_landed = yes
+            has_character_flag = rf_palace_coup_neutral_rejector
+            NOT = { has_character_flag = rf_palace_coup_split_protected }
+            primary_title.tier >= tier_county
+            NOT = { has_character_flag = rf_forced_breakaway_seed }
+            OR = {
+                has_claim_on = scope:original_primary
+                current_military_strength >= {
+                    value = scope:palace_coup_challenger.current_military_strength
+                    multiply = 0.25
+                }
+            }
+        }
+        riseandfall_palace_coup_mark_neutral_seed_se = yes
+    }
+
+    # Hegemony-scale coups can produce empire-sized neutral power bases before
+    # the normal kingdom pass adds smaller local rally points.
+    if = {
+        limit = { scope:original_primary = { tier = tier_hegemony } }
+        every_realm_de_jure_empire = {
+            save_scope_as = palace_coup_neutral_empire
+            if = {
+                limit = {
+                    scope:palace_coup_challenger = {
+                        NOT = {
+                            any_vassal = {
+                                is_landed = yes
+                                has_character_flag = rf_palace_coup_neutral_seed
+                                capital_county.kingdom = { de_jure_liege = scope:palace_coup_neutral_empire }
+                            }
+                        }
+                    }
+                }
+                scope:palace_coup_challenger = {
+                    ordered_vassal = {
+                        limit = {
+                            is_landed = yes
+                            has_character_flag = rf_palace_coup_neutral_rejector
+                            NOT = { has_character_flag = rf_palace_coup_split_protected }
+                            NOT = { has_character_flag = rf_forced_breakaway_seed }
+                            primary_title.tier >= tier_county
+                            capital_county.kingdom = { de_jure_liege = scope:palace_coup_neutral_empire }
+                            current_military_strength >= {
+                                value = scope:palace_coup_challenger.current_military_strength
+                                multiply = 0.12
+                            }
+                        }
+                        order_by = current_military_strength
+                        max = 1
+                        riseandfall_palace_coup_mark_neutral_seed_se = yes
+                    }
+                }
+            }
+        }
+    }
+
+    # If a region has no neutral leader yet, the strongest substantial rejector
+    # there becomes the rally point. Weaker rejectors are merged regionally later.
+    every_realm_de_jure_kingdom = {
+        save_scope_as = palace_coup_neutral_region
+        if = {
+            limit = {
+                scope:palace_coup_challenger = {
+                    NOT = {
+                        any_vassal = {
+                            is_landed = yes
+                            has_character_flag = rf_palace_coup_neutral_seed
+                            capital_county.kingdom = scope:palace_coup_neutral_region
+                        }
+                    }
+                }
+            }
+            scope:palace_coup_challenger = {
+                ordered_vassal = {
+                    limit = {
+                        is_landed = yes
+                        has_character_flag = rf_palace_coup_neutral_rejector
+                        NOT = { has_character_flag = rf_palace_coup_split_protected }
+                        NOT = { has_character_flag = rf_forced_breakaway_seed }
+                        primary_title.tier >= tier_county
+                        capital_county.kingdom = scope:palace_coup_neutral_region
+                        current_military_strength >= {
+                            value = scope:palace_coup_challenger.current_military_strength
+                            multiply = 0.10
+                        }
+                    }
+                    order_by = current_military_strength
+                    max = 1
+                    riseandfall_palace_coup_mark_neutral_seed_se = yes
+                }
+            }
+        }
+    }
+}
+
+riseandfall_palace_coup_score_vassal_alignment_se = {
+    set_variable = { name = rf_palace_coup_loyalist_score value = 20 }
+    set_variable = { name = rf_palace_coup_coup_score value = 0 }
+    set_variable = { name = rf_palace_coup_reject_score value = 10 }
+
+    if = {
+        limit = { is_allied_to = scope:original_ruler }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 100 }
+    }
+    if = {
+        limit = { is_allied_to = scope:palace_coup_challenger }
+        change_variable = { name = rf_palace_coup_coup_score add = 100 }
+    }
+    if = {
+        limit = { is_at_war_with = scope:original_ruler }
+        change_variable = { name = rf_palace_coup_loyalist_score add = -80 }
+        change_variable = { name = rf_palace_coup_coup_score add = 70 }
+        change_variable = { name = rf_palace_coup_reject_score add = 30 }
+    }
+    if = {
+        limit = { is_at_war_with = scope:palace_coup_challenger }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 90 }
+        change_variable = { name = rf_palace_coup_coup_score add = -40 }
+    }
+
+    if = {
+        limit = { capital_county.duchy = scope:original_ruler.capital_county.duchy }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 90 }
+        change_variable = { name = rf_palace_coup_reject_score add = -25 }
+    }
+    else_if = {
+        limit = { capital_county.kingdom = scope:original_ruler.capital_county.kingdom }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 45 }
+    }
+    if = {
+        limit = { primary_title = { is_neighbor_to_realm = scope:original_ruler } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 35 }
+    }
+    if = {
+        limit = {
+            NOT = { capital_county.kingdom = scope:original_ruler.capital_county.kingdom }
+            current_military_strength >= {
+                value = scope:original_ruler.current_military_strength
+                multiply = 0.20
+            }
+        }
+        change_variable = { name = rf_palace_coup_reject_score add = 35 }
+    }
+
+    if = {
+        limit = { opinion = { target = scope:original_ruler value >= 80 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 70 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:original_ruler value >= 40 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 40 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:original_ruler value >= 10 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 15 }
+    }
+    if = {
+        limit = { opinion = { target = scope:original_ruler value <= -60 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = -60 }
+        change_variable = { name = rf_palace_coup_coup_score add = 35 }
+        change_variable = { name = rf_palace_coup_reject_score add = 55 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:original_ruler value <= -20 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = -35 }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+
+    if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value >= 80 } }
+        change_variable = { name = rf_palace_coup_coup_score add = 70 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value >= 40 } }
+        change_variable = { name = rf_palace_coup_coup_score add = 40 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value >= 10 } }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+    }
+    if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value <= -60 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 35 }
+        change_variable = { name = rf_palace_coup_coup_score add = -70 }
+        change_variable = { name = rf_palace_coup_reject_score add = 50 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value <= -20 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 20 }
+        change_variable = { name = rf_palace_coup_coup_score add = -35 }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+    else_if = {
+        limit = { opinion = { target = scope:palace_coup_challenger value < 0 } }
+        change_variable = { name = rf_palace_coup_coup_score add = -10 }
+        change_variable = { name = rf_palace_coup_reject_score add = 5 }
+    }
+
+    # Cross-pressure matters: a vassal who dislikes the coup leader should not
+    # drift into the coup camp just because the old ruler is unpopular too.
+    if = {
+        limit = {
+            opinion = { target = scope:original_ruler value >= 10 }
+            opinion = { target = scope:palace_coup_challenger value <= -20 }
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 35 }
+        change_variable = { name = rf_palace_coup_coup_score add = -20 }
+    }
+    if = {
+        limit = {
+            opinion = { target = scope:original_ruler value <= -20 }
+            opinion = { target = scope:palace_coup_challenger value <= -20 }
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = -25 }
+        change_variable = { name = rf_palace_coup_reject_score add = 45 }
+    }
+    if = {
+        limit = {
+            opinion = { target = scope:original_ruler value <= -20 }
+            opinion = { target = scope:palace_coup_challenger value >= 40 }
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 25 }
+        change_variable = { name = rf_palace_coup_reject_score add = -10 }
+    }
+
+    if = {
+        limit = { reverse_opinion = { target = scope:original_ruler value >= 40 } }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 15 }
+    }
+    if = {
+        limit = { reverse_opinion = { target = scope:palace_coup_challenger value >= 40 } }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+    }
+
+    if = {
+        limit = {
+            scope:original_ruler = { has_dynasty = yes }
+            has_dynasty = yes
+            dynasty = scope:original_ruler.dynasty
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 60 }
+    }
+    if = {
+        limit = {
+            scope:palace_coup_challenger = { has_dynasty = yes }
+            has_dynasty = yes
+            dynasty = scope:palace_coup_challenger.dynasty
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 60 }
+    }
+
+    if = {
+        limit = { has_same_culture_as = scope:original_ruler }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 25 }
+    }
+    if = {
+        limit = { has_same_culture_as = scope:palace_coup_challenger }
+        change_variable = { name = rf_palace_coup_coup_score add = 25 }
+    }
+    if = {
+        limit = { faith = scope:original_ruler.faith }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 25 }
+    }
+    if = {
+        limit = { faith = scope:palace_coup_challenger.faith }
+        change_variable = { name = rf_palace_coup_coup_score add = 25 }
+    }
+    if = {
+        limit = { religion = scope:original_ruler.religion }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 10 }
+    }
+    if = {
+        limit = { religion = scope:palace_coup_challenger.religion }
+        change_variable = { name = rf_palace_coup_coup_score add = 10 }
+    }
+
+    if = {
+        limit = { has_claim_on = scope:original_primary }
+        change_variable = { name = rf_palace_coup_coup_score add = 80 }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+
+    if = {
+        limit = {
+            OR = {
+                has_trait = ambitious
+                has_trait = arrogant
+                has_trait = brave
+                has_trait = vengeful
+                has_trait = wrathful
+            }
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+    }
+    if = {
+        limit = {
+            OR = {
+                has_trait = content
+                has_trait = craven
+                has_trait = trusting
+                has_trait = just
+            }
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 15 }
+    }
+    if = {
+        limit = {
+            OR = {
+                has_trait = ambitious
+                has_trait = arbitrary
+                has_trait = greedy
+            }
+        }
+        change_variable = { name = rf_palace_coup_reject_score add = 15 }
+    }
+    if = {
+        limit = {
+            OR = {
+                has_trait = loyal
+                has_trait = stubborn
+            }
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 25 }
+    }
+    if = {
+        limit = {
+            OR = {
+                has_trait = deceitful
+                has_trait = callous
+                has_trait = fickle
+            }
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+        change_variable = { name = rf_palace_coup_reject_score add = 10 }
+    }
+    if = {
+        limit = { has_trait = paranoid }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+
+    if = {
+        limit = { ai_honor >= 50 }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 20 }
+    }
+    if = {
+        limit = { ai_honor <= -50 }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+        change_variable = { name = rf_palace_coup_reject_score add = 10 }
+    }
+    if = {
+        limit = { ai_boldness >= 50 }
+        change_variable = { name = rf_palace_coup_coup_score add = 10 }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+    if = {
+        limit = { ai_boldness <= -50 }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 10 }
+        change_variable = { name = rf_palace_coup_coup_score add = 10 }
+        change_variable = { name = rf_palace_coup_reject_score add = -15 }
+    }
+    if = {
+        limit = { ai_vengefulness >= 50 }
+        change_variable = { name = rf_palace_coup_coup_score add = 10 }
+        change_variable = { name = rf_palace_coup_reject_score add = 15 }
+    }
+    if = {
+        limit = {
+            ai_rationality >= 25
+            scope:original_ruler.current_military_strength > scope:palace_coup_challenger.current_military_strength
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 15 }
+    }
+    if = {
+        limit = {
+            ai_rationality >= 25
+            scope:palace_coup_challenger.current_military_strength > scope:original_ruler.current_military_strength
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+    }
+
+    if = {
+        limit = {
+            has_dread_level_towards = {
+                target = scope:original_ruler
+                level >= 1
+            }
+        }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 15 }
+        change_variable = { name = rf_palace_coup_reject_score add = -10 }
+    }
+    if = {
+        limit = {
+            has_dread_level_towards = {
+                target = scope:palace_coup_challenger
+                level >= 1
+            }
+        }
+        change_variable = { name = rf_palace_coup_coup_score add = 15 }
+        change_variable = { name = rf_palace_coup_reject_score add = -10 }
+    }
+
+    if = {
+        limit = { current_military_strength > scope:original_ruler.current_military_strength }
+        change_variable = { name = rf_palace_coup_coup_score add = 10 }
+        change_variable = { name = rf_palace_coup_reject_score add = 25 }
+    }
+    if = {
+        limit = { current_military_strength > scope:palace_coup_challenger.current_military_strength }
+        change_variable = { name = rf_palace_coup_loyalist_score add = 10 }
+        change_variable = { name = rf_palace_coup_reject_score add = 10 }
+    }
+
+    if = {
+        limit = {
+            NOT = { has_same_culture_as = scope:original_ruler }
+            NOT = { faith = scope:original_ruler.faith }
+            opinion = { target = scope:original_ruler value <= 0 }
+        }
+        change_variable = { name = rf_palace_coup_reject_score add = 20 }
+    }
+}
+
+riseandfall_palace_coup_apply_ai_vassal_alignment_se = {
+    # Seed scores to 0 so the scorer's change_variable calls have a valid base.
+    set_variable = { name = rf_palace_coup_loyalist_score value = 0 }
+    set_variable = { name = rf_palace_coup_coup_score value = 0 }
+    set_variable = { name = rf_palace_coup_reject_score value = 0 }
+    riseandfall_palace_coup_score_vassal_alignment_se = yes
+
+    # Claimants already have a throne bid, so AI claimants always refuse both camps.
+    if = {
+        limit = { has_claim_on = scope:original_primary }
+        set_variable = { name = rf_palace_coup_reject_score value = 9999 }
+    }
+
+    # Compute margins to avoid direct rhs `var:` links in triggers during tooltip build.
+    set_variable = { name = rf_palace_coup_loyalist_margin value = var:rf_palace_coup_loyalist_score }
+    
+    set_variable = { name = rf_palace_coup_tmp value = var:rf_palace_coup_coup_score }
+    change_variable = { name = rf_palace_coup_tmp multiply = -1 }
+    change_variable = { name = rf_palace_coup_loyalist_margin add = var:rf_palace_coup_tmp }
+    
+    set_variable = { name = rf_palace_coup_coup_margin value = var:rf_palace_coup_coup_score }
+    set_variable = { name = rf_palace_coup_tmp value = var:rf_palace_coup_reject_score }
+    change_variable = { name = rf_palace_coup_tmp multiply = -1 }
+    change_variable = { name = rf_palace_coup_coup_margin add = var:rf_palace_coup_tmp }
+    
+    remove_variable = rf_palace_coup_tmp
+
+    if = {
+        # Check if loyalist is >= coup
+        limit = { has_variable = rf_palace_coup_loyalist_margin var:rf_palace_coup_loyalist_margin >= 0 }
+        
+        # Check if loyalist is >= reject
+        set_variable = { name = rf_palace_coup_loyalist_reject_margin value = var:rf_palace_coup_loyalist_score }
+        set_variable = { name = rf_palace_coup_tmp value = var:rf_palace_coup_reject_score }
+        change_variable = { name = rf_palace_coup_tmp multiply = -1 }
+        change_variable = { name = rf_palace_coup_loyalist_reject_margin add = var:rf_palace_coup_tmp }
+        remove_variable = rf_palace_coup_tmp
+        
+        if = {
+            limit = { has_variable = rf_palace_coup_loyalist_reject_margin var:rf_palace_coup_loyalist_reject_margin >= 0 }
+            riseandfall_palace_coup_mark_loyalist_se = yes
+        }
+        else = {
+            riseandfall_palace_coup_mark_reject_se = yes
+        }
+        remove_variable = rf_palace_coup_loyalist_reject_margin
+    }
+    else_if = {
+        # coup > loyalist (already implied by else) and coup >= reject
+        limit = { has_variable = rf_palace_coup_coup_margin var:rf_palace_coup_coup_margin >= 0 }
+        riseandfall_palace_coup_mark_coup_se = yes
+    }
+    else = {
+        riseandfall_palace_coup_mark_reject_se = yes
+    }
+    
+    remove_variable = rf_palace_coup_loyalist_margin
+    remove_variable = rf_palace_coup_coup_margin
+}
+
+riseandfall_palace_coup_continue_player_choices = {
+    save_scope_as = original_ruler
+    # Prevent stale saved scope from re-firing the same player choice event in a loop.
+    if = {
+        limit = { exists = scope:palace_coup_next_player_vassal }
+        clear_saved_scope = palace_coup_next_player_vassal
+    }
+    ordered_vassal = {
+        limit = {
+            is_landed = yes
+            liege = scope:original_ruler
+            has_character_flag = rf_palace_coup_pending_choice
+            is_ai = no
+        }
+        order_by = current_military_strength
+        max = 1
+        save_scope_as = palace_coup_next_player_vassal
+    }
+
+    if = {
+        limit = {
+            exists = scope:palace_coup_next_player_vassal
+            scope:palace_coup_next_player_vassal = { has_character_flag = rf_palace_coup_pending_choice }
+        }
+        scope:palace_coup_next_player_vassal = { trigger_event = { id = palace_coup.1201 delayed = yes } }
+    }
+    else = {
+        riseandfall_palace_coup_root_flees_success = yes
+    }
+}
+
+riseandfall_palace_coup_prepare_rebellion = {
+    save_scope_as = original_ruler
+    primary_title = { save_scope_as = original_primary }
+    scope:challenger = { save_scope_as = palace_coup_challenger }
+    set_variable = { name = rf_palace_coup_active_challenger value = scope:palace_coup_challenger }
+
+    scope:original_ruler = {
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                liege = scope:original_ruler
+                NOT = { this = scope:palace_coup_challenger }
+            }
+            riseandfall_palace_coup_clear_vassal_choice_se = yes
+
+            if = {
+                limit = { is_ai = no }
+                add_character_flag = { flag = rf_palace_coup_pending_choice days = 30 }
+                set_variable = { name = rf_palace_coup_choice_ruler value = scope:original_ruler }
+                set_variable = { name = rf_palace_coup_choice_challenger value = scope:palace_coup_challenger }
+            }
+            else = {
+                riseandfall_palace_coup_apply_ai_vassal_alignment_se = yes
+            }
+        }
+
+        if = {
+            limit = {
+                any_vassal = {
+                    is_landed = yes
+                    liege = scope:original_ruler
+                    has_character_flag = rf_palace_coup_pending_choice
+                    is_ai = no
+                }
+            }
+            riseandfall_palace_coup_continue_player_choices = yes
+        }
+        else = {
+            riseandfall_palace_coup_root_flees_success = yes
+        }
+    }
+}
+
+riseandfall_palace_coup_start_rebellion = {
+    riseandfall_palace_coup_prepare_rebellion = yes
+}
+
+# Rise and Fall - Palace Coup Root Wins Prowess Duel
+# Kills the challenger when root wins the prowess duel
+
+riseandfall_palace_coup_root_wins_prowess_duel = {
+    if = {
+        limit = { exists = scope:challenger scope:challenger = { is_alive = yes } }
+        scope:challenger = {
+            death = {
+                death_reason = death_duel
+                killer = scope:event_root
+            }
+        }
+    }
+
+    # Notify challenger of defeat
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { trigger_event = { id = palace_coup.2001 } }
+    }
+}
+
+##########################
+# Rise and Fall - Palace Coup Challenger Wins Prowess Duel
+# Transfers titles, vassals, gold, and triggers root death when challenger wins the prowess duel
+
+riseandfall_palace_coup_challenger_wins_prowess_duel = {
+    if = {
+        limit = { scope:challenger = { is_alive = yes } }
+        # Challenger does not seize titles; no title or vassal transfers
+        # (we will instead set the challenger as the puppet master below)
+        # (no action taken here)
+        scope:challenger = {
+            if = {
+                limit = {
+                    root = { has_legitimacy = yes }
+                    this = { has_legitimacy = yes }
+                    this = { is_ruler = yes }
+                }
+                add_legitimacy = -1200
+            }
+        }
+    }
+
+
+
+    scope:event_root = {
+        every_courtier_or_guest = {
+            limit = {
+                is_alive = yes
+                this != root
+                this != scope:challenger
+            }
+
+            # Assign employer to challenger
+            if = {
+                limit = { employer != scope:challenger }
+                if = { limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } } set_employer = scope:challenger }
+            }
+            random = {
+                chance = 100
+
+                if = {
+                    limit = {
+                        not = { exists = involved_activity }
+                    }
+
+                    set_location_to_default = yes
+                }
+                else_if = {
+                    limit = { is_courtier = yes }
+                    return_to_court = yes
+                }
+                else = {
+                    set_location_to_default = yes
+                }
+            }
+        }
+    }
+
+    # Transfer all of root's gold to challenger (root will die) then trigger death event for root
+
+    # Save root gold amount then give it to the challenger (use saved event_root scope)
+
+    scope:event_root = {
+        if = { limit = { gold > 1 } set_variable = { name = duel_transfer_gold value = gold } }
+    }
+    # Add to challenger from the saved event_root variable
+    scope:challenger = {
+        if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } scope:challenger = { is_alive = yes } } add_short_term_gold = scope:event_root.var:duel_transfer_gold }
+    }
+    # Remove gold from event_root and cleanup variable
+    scope:event_root = {
+        if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold }
+        remove_variable = duel_transfer_gold
+    }
+    # Notify the defeated ruler and attempt to make them a puppet (no death)
+    # Attempt to start puppet regency on the defeated ruler and assign challenger as diarch
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = {
+            scope:challenger = {
+                if = { limit = { NOT = { employer = root } } set_employer = root }
+                every_courtier = {
+                    limit = { is_alive = yes NOT = { employer = root } }
+                    set_employer = root
+                }
+            }
+            try_start_diarchy = puppet_regency
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+    else_if = {
+        limit = { root = { has_active_diarchy = yes } }
+        root = {
+            # Make sure the (new) diarch is not employed by the challenger; as puppet master they must be in root's court.
+            # Only proceed if the challenger is a valid courtier-type character (unrulered) after camp cleanup.
+            if = {
+                limit = { exists = scope:challenger scope:challenger = { is_alive = yes NOT = { is_ruler = yes } } }
+                scope:challenger = {
+                    # Ensure challenger is employed by the defeated ruler before becoming diarch
+                    if = { limit = { NOT = { employer = root } } set_employer = root }
+                    every_courtier = {
+                        limit = { is_alive = yes NOT = { employer = root } }
+                        set_employer = root
+                    }
+                }
+
+                set_diarch = scope:challenger
+                set_diarchy_type = puppet_regency
+                set_diarchy_swing = 90
+
+                riseandfall_sync_puppet_master_court_position = yes
+            }
+        }
+    }
+    # Trigger notification event for the defeated ruler
+    root = { trigger_event = { id = palace_coup.1004 } }
+
+    # Notify challenger of victory
+    if = {
+        limit = { exists = scope:challenger }
+        scope:challenger = { trigger_event = { id = palace_coup.2002 } }
+    }
+}
+
+##########################
+# Rise and Fall - Palace Coup Root Flees Success
+# Transfers some titles, vassals, gold, makes rivals, and triggers call banners when root successfully flees
+
+riseandfall_palace_coup_root_flees_success = {
+    save_scope_as = original_ruler
+    save_scope_as = palace_coup_original_ruler
+    primary_title = { save_scope_as = original_primary }
+    primary_title = { save_scope_as = palace_coup_original_primary }
+    if = {
+        limit = { has_variable = rf_palace_coup_active_challenger }
+        var:rf_palace_coup_active_challenger = { save_scope_as = palace_coup_challenger }
+    }
+    else = {
+        scope:challenger = { save_scope_as = palace_coup_challenger }
+    }
+    capital_county = { save_scope_as = palace_coup_old_capital_county }
+    capital_county.duchy = { save_scope_as = palace_coup_core_duchy }
+    capital_county.kingdom = { save_scope_as = palace_coup_core_kingdom }
+
+    # Reserve a non-capital county on the deposed ruler so they remain landed
+    # through split resolve. Do not reserve the capital itself: one-county
+    # realms must still transfer that county first so the challenger can hold
+    # the original primary title.
+    scope:original_ruler = {
+        random_held_title = {
+            limit = {
+                tier = tier_county
+                NOT = { this = scope:palace_coup_old_capital_county }
+            }
+            save_scope_as = palace_coup_original_reserve_county
+        }
+    }
+
+    # End any active diarchy before transferring titles to prevent on_diarch_change
+    # from firing with a null diarch when the primary title changes hands.
+    if = {
+        limit = { has_active_diarchy = yes }
+        end_diarchy = yes
+    }
+
+    # Transfer the capital county in its own resolved change first so the challenger
+    # is already landed when vanilla on_accolade_create_squire evaluates capital_province.
+    if = {
+        limit = {
+            exists = scope:palace_coup_old_capital_county
+            NOT = { scope:palace_coup_old_capital_county = { holder = scope:palace_coup_challenger } }
+        }
+        create_title_and_vassal_change = {
+            type = conquest
+            save_scope_as = palace_coup_capital_change
+            add_claim_on_loss = yes
+        }
+        scope:palace_coup_old_capital_county = {
+            change_title_holder = {
+                holder = scope:palace_coup_challenger
+                change = scope:palace_coup_capital_change
+            }
+        }
+        resolve_title_and_vassal_change = scope:palace_coup_capital_change
+    }
+
+    # Split the realm into two successor states: the challenger keeps the
+    # original title plus the capital core, while the fleeing ruler keeps the
+    # outer realm and forms the rival splinter state.
+    create_title_and_vassal_change = {
+        type = conquest
+        save_scope_as = palace_coup_split_change
+        add_claim_on_loss = yes
+    }
+
+    scope:original_primary = {
+        change_title_holder = {
+            holder = scope:palace_coup_challenger
+            change = scope:palace_coup_split_change
+        }
+    }
+
+    # Transfer ALL same-rank (and subordinate) titles to the challenger.
+    # For empire/hegemony rulers: transfer all kingdom titles and below.
+    # For kingdom rulers: transfer all kingdom titles the ruler personally holds.
+    # All direct vassals move into the coup realm for a clean top-level resolve.
+    # Loyalists are returned once the fleeing ruler has a valid successor realm;
+    # only unprotected rejectors remain eligible for the follow-up split.
+    scope:original_ruler = {
+        if = {
+            limit = { exists = scope:palace_coup_original_reserve_county }
+            every_held_title = {
+                limit = {
+                    NOT = { this = scope:original_primary }
+                    NOT = { this = scope:palace_coup_old_capital_county }
+                    NOT = { this ?= scope:palace_coup_original_reserve_county }
+                    NOT = { is_head_of_faith = yes }
+                    NOT = { is_noble_family_title = yes }
+                    OR = {
+                        tier = tier_kingdom
+                        tier = tier_duchy
+                        tier = tier_county
+                    }
+                }
+                change_title_holder = {
+                    holder = scope:palace_coup_challenger
+                    change = scope:palace_coup_split_change
+                }
+            }
+        }
+        else = {
+            # A ruler with only the capital personally held has no reserve scope;
+            # skip that comparison while transferring all non-capital titles.
+            every_held_title = {
+                limit = {
+                    NOT = { this = scope:original_primary }
+                    NOT = { this = scope:palace_coup_old_capital_county }
+                    NOT = { is_head_of_faith = yes }
+                    NOT = { is_noble_family_title = yes }
+                    OR = {
+                        tier = tier_kingdom
+                        tier = tier_duchy
+                        tier = tier_county
+                    }
+                }
+                change_title_holder = {
+                    holder = scope:palace_coup_challenger
+                    change = scope:palace_coup_split_change
+                }
+            }
+        }
+        every_vassal = {
+            limit = {
+                is_landed = yes
+                liege = scope:original_ruler
+                NOT = { this = scope:palace_coup_challenger }
+            }
+            change_liege = {
+                liege = scope:palace_coup_challenger
+                change = scope:palace_coup_split_change
+            }
+        }
+    }
+
+    resolve_title_and_vassal_change = scope:palace_coup_split_change
+    if = {
+        limit = {
+            exists = scope:original_primary
+            scope:original_primary = { holder = scope:palace_coup_challenger }
+        }
+        scope:palace_coup_challenger = { set_primary_title_to = scope:original_primary }
+    }
+
+    # If the old ruler personally loses all land, take one county from the
+    # challenger's new realm so they can anchor a breakaway state.
+    # Search the CHALLENGER's vassals first. Fall back to the challenger's
+    # directly held counties for highly centralised realms (e.g. Byzantine
+    # Empire) where few or no sub-vassal lords exist after the transfer.
+    if = {
+        limit = { scope:original_ruler = { is_landed = no } }
+        # Search challenger's sub-vassals: prefer duchy lords outside the core duchy
+        scope:palace_coup_challenger = {
+            ordered_vassal = {
+                limit = {
+                    is_landed = yes
+                    primary_title.tier >= tier_duchy
+                    any_held_title = {
+                        count >= 2
+                        tier = tier_county
+                    }
+                    NOT = { capital_county.duchy = scope:palace_coup_core_duchy }
+                }
+                order_by = current_military_strength
+                max = 1
+                save_scope_as = palace_coup_land_donor
+            }
+            if = {
+                limit = { NOT = { exists = scope:palace_coup_land_donor } }
+                ordered_vassal = {
+                    limit = {
+                        is_landed = yes
+                        any_held_title = {
+                            count >= 2
+                            tier = tier_county
+                        }
+                        NOT = { capital_county.duchy = scope:palace_coup_core_duchy }
+                    }
+                    order_by = current_military_strength
+                    max = 1
+                    save_scope_as = palace_coup_land_donor
+                }
+            }
+            # Widest vassal fallback — any landed vassal (including core duchy)
+            if = {
+                limit = { NOT = { exists = scope:palace_coup_land_donor } }
+                ordered_vassal = {
+                    limit = {
+                        is_landed = yes
+                        any_held_title = {
+                            count >= 2
+                            tier = tier_county
+                        }
+                    }
+                    order_by = current_military_strength
+                    max = 1
+                    save_scope_as = palace_coup_land_donor
+                }
+            }
+        }
+
+        # Deep fallback for centralised realms (Byzantine-style) where the challenger
+        # holds most land personally with no sub-vassal to donate.
+        # Pick one of the challenger's directly held counties outside the core duchy.
+        if = {
+            limit = { NOT = { exists = scope:palace_coup_land_donor } }
+            scope:palace_coup_challenger = {
+                random_held_title = {
+                    limit = {
+                        tier = tier_county
+                        NOT = { this = scope:palace_coup_old_capital_county }
+                        NOT = { de_jure_liege = scope:palace_coup_core_duchy }
+                    }
+                    save_scope_as = palace_coup_direct_donor_title
+                }
+                if = {
+                    limit = { NOT = { exists = scope:palace_coup_direct_donor_title } }
+                    random_held_title = {
+                        limit = {
+                            tier = tier_county
+                            NOT = { this = scope:palace_coup_old_capital_county }
+                        }
+                        save_scope_as = palace_coup_direct_donor_title
+                    }
+                }
+            }
+        }
+
+        # Apply whichever donor path succeeded
+        if = {
+            limit = { exists = scope:palace_coup_land_donor }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_land_change
+                add_claim_on_loss = yes
+            }
+            scope:palace_coup_land_donor = {
+                capital_county = {
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_land_change
+                    }
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_land_change
+        }
+        else_if = {
+            limit = { exists = scope:palace_coup_direct_donor_title }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_land_change
+                add_claim_on_loss = yes
+            }
+            scope:palace_coup_direct_donor_title = {
+                change_title_holder = {
+                    holder = scope:original_ruler
+                    change = scope:palace_coup_land_change
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_land_change
+        }
+    }
+
+        # Make the fleeing ruler a direct vassal seed inside the challenger's new
+        # realm so the full inherited realm can fracture around them.
+        # NOTE: is_independent_ruler check intentionally omitted — duchy/county-tier rulers
+        # become independent after losing their primary title, and must still be seeded.
+        if = {
+            limit = {
+                scope:original_ruler = {
+                    is_landed = yes
+                    NOT = { liege = scope:palace_coup_challenger }
+                    # Tier check: challenger must hold a higher-tier title or CK3 will reject the vassalage
+                    primary_title.tier < scope:palace_coup_challenger.primary_title.tier
+                }
+            }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_direct_vassal_change
+                add_claim_on_loss = no
+            }
+            scope:original_ruler = {
+                change_liege = {
+                    liege = scope:palace_coup_challenger
+                    change = scope:palace_coup_direct_vassal_change
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_direct_vassal_change
+        }
+
+        if = {
+            limit = { scope:original_ruler = { is_landed = yes } }
+            scope:original_ruler = { add_character_flag = rf_forced_breakaway_seed }
+        }
+
+        scope:palace_coup_challenger = {
+            riseandfall_palace_coup_seed_neutral_rejectors_se = yes
+        }
+
+        if = {
+            limit = {
+                scope:palace_coup_challenger = {
+                    is_independent_ruler = yes
+                    any_vassal = {
+                        is_landed = yes
+                        NOT = { has_character_flag = rf_palace_coup_split_protected }
+                        primary_title.tier >= tier_county
+                    }
+                }
+                # Only call the full realm split on the challenger when the fleeing ruler 
+                # has successfully become their direct vassal, OR if the fleeing ruler 
+                # stayed independent (e.g. they kept a secondary kingdom title).
+                OR = {
+                    scope:original_ruler = { liege = scope:palace_coup_challenger }
+                    scope:original_ruler = { is_independent_ruler = yes }
+                }
+            }
+            scope:palace_coup_challenger = {
+                set_variable = { name = rf_realm_split_no_tributaries value = 1 }
+                riseandfall_realm_split_se = yes
+                remove_variable = rf_realm_split_no_tributaries
+            }
+        }
+        # Restore scope:original_ruler to root (riseandfall_realm_split_se overwrites it to the challenger)
+        scope:palace_coup_original_ruler = { save_scope_as = original_ruler }
+        scope:palace_coup_original_primary = { save_scope_as = original_primary }
+
+        if = {
+            limit = { scope:original_ruler = { has_character_flag = rf_forced_breakaway_seed } }
+            scope:original_ruler = { remove_character_flag = rf_forced_breakaway_seed }
+        }
+
+        # Safety fallback for very small or malformed realms where the full split did
+        # not fire but the old ruler should still form an independent rival state.
+        if = {
+            limit = {
+                scope:original_ruler = {
+                    is_landed = yes
+                    is_independent_ruler = no
+                }
+            }
+            create_title_and_vassal_change = {
+                type = independency
+                save_scope_as = palace_coup_indep_change
+                add_claim_on_loss = yes
+            }
+            scope:original_ruler = {
+                becomes_independent = {
+                    change = scope:palace_coup_indep_change
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_indep_change
+        }
+
+        clear_saved_scope = palace_coup_root_successor_title
+
+        # Match realm split: the fleeing ruler gets a newly-created dynamic title
+        # at the origin title's rank before successor-state markers are applied.
+        # Hegemony origins fall back to empire-tier dynamic titles, matching
+        # riseandfall_execute_realm_split_se.
+        if = {
+            limit = {
+                scope:original_ruler = { exists = capital_county }
+                OR = {
+                    scope:original_primary = { tier = tier_hegemony }
+                    scope:original_primary = { tier = tier_empire }
+                }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_barony = { save_scope_as = rf_base_capital_barony }
+                create_dynamic_title = {
+                    tier = empire
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    generate_coa = yes
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+        else_if = {
+            limit = {
+                scope:original_ruler = { exists = capital_county }
+                scope:original_primary = { tier = tier_kingdom }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_barony = { save_scope_as = rf_base_capital_barony }
+                create_dynamic_title = {
+                    tier = kingdom
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    generate_coa = yes
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+        else_if = {
+            limit = {
+                scope:original_ruler = { exists = capital_county }
+                scope:original_primary = { tier = tier_duchy }
+            }
+            scope:original_ruler = {
+                capital_county = { save_scope_as = rf_base_county }
+                capital_barony = { save_scope_as = rf_base_capital_barony }
+                create_dynamic_title = {
+                    tier = duchy
+                    name = RISEANDFALL_BREAKAWAY_NAME_CAPITAL
+                }
+            }
+            if = {
+                limit = { exists = scope:new_title }
+                create_title_and_vassal_change = {
+                    type = created
+                    save_scope_as = palace_coup_title_change
+                    add_claim_on_loss = yes
+                }
+                scope:new_title = {
+                    save_scope_as = palace_coup_root_successor_title
+                    change_title_holder = {
+                        holder = scope:original_ruler
+                        change = scope:palace_coup_title_change
+                    }
+                    set_color_from_title = scope:rf_base_county
+                    generate_coa = yes
+                }
+                resolve_title_and_vassal_change = scope:palace_coup_title_change
+            }
+        }
+
+        if = {
+            limit = { NOT = { exists = scope:palace_coup_root_successor_title } }
+            scope:original_ruler = {
+                if = {
+                    limit = { exists = primary_title }
+                    primary_title = { save_scope_as = palace_coup_root_successor_title }
+                }
+            }
+        }
+
+        # The fleeing ruler must use the newly-created origin-rank retreat title
+        # as primary; otherwise a reserve county/duchy can become the successor
+        # title even though kingdom/empire origins require kingdom/empire heirs.
+        if = {
+            limit = { exists = scope:palace_coup_root_successor_title }
+            scope:original_ruler = {
+                set_primary_title_to = scope:palace_coup_root_successor_title
+            }
+        }
+
+        # Hegemony rulers cannot host empire-tier loyalists as direct vassals after
+        # the old ruler falls back to a normal empire title. Keep those rulers in the
+        # deposed camp as allied successor states instead.
+        if = {
+            limit = {
+                scope:original_primary = { tier = tier_hegemony }
+                scope:palace_coup_challenger = {
+                    any_vassal = {
+                        is_landed = yes
+                        liege = scope:palace_coup_challenger
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        primary_title.tier >= tier_empire
+                    }
+                }
+            }
+            create_title_and_vassal_change = {
+                type = independency
+                save_scope_as = palace_coup_hegemony_loyalist_change
+                add_claim_on_loss = no
+            }
+            scope:palace_coup_challenger = {
+                every_vassal = {
+                    limit = {
+                        is_landed = yes
+                        liege = scope:palace_coup_challenger
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        primary_title.tier >= tier_empire
+                    }
+                    add_to_list = palace_coup_hegemony_loyalists
+                    becomes_independent = {
+                        change = scope:palace_coup_hegemony_loyalist_change
+                    }
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_hegemony_loyalist_change
+
+            every_in_list = {
+                list = palace_coup_hegemony_loyalists
+                if = {
+                    limit = {
+                        is_alive = yes
+                        is_independent_ruler = yes
+                        NOT = { is_allied_to = scope:original_ruler }
+                    }
+                    create_alliance = scope:original_ruler
+                }
+                riseandfall_apply_palace_coup_successor_grace_se = yes
+                remove_character_flag = rf_palace_coup_return_to_ruler
+                remove_character_flag = rf_palace_coup_split_protected
+            }
+        }
+
+        # Pull explicitly loyalist vassals back under the fleeing ruler now that
+        # they have a valid successor realm to anchor.
+        if = {
+            limit = {
+                scope:palace_coup_challenger = {
+                    any_vassal = {
+                        is_landed = yes
+                        liege = scope:palace_coup_challenger
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        primary_title.tier < scope:original_ruler.primary_title.tier
+                    }
+                }
+            }
+            create_title_and_vassal_change = {
+                type = conquest
+                save_scope_as = palace_coup_loyalist_return_change
+                add_claim_on_loss = no
+            }
+            scope:palace_coup_challenger = {
+                every_vassal = {
+                    limit = {
+                        is_landed = yes
+                        liege = scope:palace_coup_challenger
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        primary_title.tier < scope:original_ruler.primary_title.tier
+                    }
+                    change_liege = {
+                        liege = scope:original_ruler
+                        change = scope:palace_coup_loyalist_return_change
+                    }
+                }
+            }
+            resolve_title_and_vassal_change = scope:palace_coup_loyalist_return_change
+        }
+
+        scope:original_ruler = {
+            every_vassal = {
+                limit = {
+                    is_landed = yes
+                    OR = {
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        has_character_flag = rf_palace_coup_split_protected
+                        has_character_flag = rf_palace_coup_retreat_anchor
+                    }
+                }
+                remove_character_flag = rf_palace_coup_return_to_ruler
+                remove_character_flag = rf_palace_coup_split_protected
+                remove_character_flag = rf_palace_coup_retreat_anchor
+            }
+        }
+        scope:palace_coup_challenger = {
+            every_vassal = {
+                limit = {
+                    is_landed = yes
+                    OR = {
+                        has_character_flag = rf_palace_coup_return_to_ruler
+                        has_character_flag = rf_palace_coup_split_protected
+                        has_character_flag = rf_palace_coup_retreat_anchor
+                    }
+                }
+                remove_character_flag = rf_palace_coup_return_to_ruler
+                remove_character_flag = rf_palace_coup_split_protected
+                remove_character_flag = rf_palace_coup_retreat_anchor
+            }
+        }
+
+        # Give root strong claims on all titles lost to the challenger
+        every_in_list = {
+            list = lost_titles
+            root = { make_claim_strong = prev }
+        }
+
+        # Mark both successor states so the later split mechanics still recognize
+        # them as rival heirs of the same origin realm.
+        scope:original_ruler = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary }
+            set_variable = { name = rf_successor_root_origin_title value = scope:original_primary }
+            add_character_flag = rf_successor_state_ruler
+            riseandfall_apply_palace_coup_successor_grace_se = yes
+            set_variable = { name = tmp_successor_realm_size value = realm_size }
+        }
+        scope:palace_coup_challenger = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary }
+            set_variable = { name = rf_successor_root_origin_title value = scope:original_primary }
+            add_character_flag = rf_successor_state_ruler
+            riseandfall_apply_palace_coup_successor_grace_se = yes
+            set_variable = { name = tmp_successor_realm_size value = realm_size }
+        }
+
+        scope:original_primary = {
+            set_variable = { name = rf_successor_origin_title value = scope:original_primary years = 30 }
+            if = {
+                limit = { scope:original_primary = { has_variable = rf_successor_root_origin_title } }
+                set_variable = { name = rf_successor_root_origin_title value = scope:original_primary.var:rf_successor_root_origin_title years = 30 }
+            }
+            else = {
+                set_variable = { name = rf_successor_root_origin_title value = scope:original_primary years = 30 }
+            }
+            set_variable = { name = rf_is_successor_split_title value = 1 years = 30 }
+            set_variable = { name = rf_is_permanent_successor_split value = 1 }
+            if = {
+                limit = { NOT = { has_variable = rf_successor_permanent_realm_size } }
+                set_variable = { name = rf_successor_permanent_realm_size value = scope:palace_coup_challenger.var:tmp_successor_realm_size }
+            }
+        }
+        if = {
+            limit = { exists = scope:palace_coup_root_successor_title }
+            scope:palace_coup_root_successor_title = {
+                set_variable = { name = rf_successor_origin_title value = scope:original_primary years = 30 }
+                if = {
+                    limit = { scope:original_primary = { has_variable = rf_successor_root_origin_title } }
+                    set_variable = { name = rf_successor_root_origin_title value = scope:original_primary.var:rf_successor_root_origin_title years = 30 }
+                }
+                else = {
+                    set_variable = { name = rf_successor_root_origin_title value = scope:original_primary years = 30 }
+                }
+                set_variable = { name = rf_is_successor_split_title value = 1 years = 30 }
+                set_variable = { name = rf_is_permanent_successor_split value = 1 }
+                if = {
+                    limit = { NOT = { has_variable = rf_successor_permanent_realm_size } }
+                    set_variable = { name = rf_successor_permanent_realm_size value = scope:original_ruler.var:tmp_successor_realm_size }
+                }
+            }
+        }
+        scope:original_ruler = { remove_variable = tmp_successor_realm_size }
+        scope:palace_coup_challenger = { remove_variable = tmp_successor_realm_size }
+        scope:original_ruler = { remove_variable = rf_palace_coup_active_challenger }
+
+        # Retreating ruler receives a strong claim on the original primary title
+        scope:original_ruler = { make_claim_strong = scope:original_primary }
+
+
+        # Trigger escape follow-up: call banners event for root
+        # Transfer 50% of root's gold to the challenger when root escapes
+
+        scope:event_root = {
+            if = {
+                limit = { gold > 1 }
+                # Save root gold amount then reduce to 50% for transfer
+                set_variable = { name = duel_transfer_gold value = gold }
+                change_variable = { name = duel_transfer_gold multiply = 0.5 }
+            }
+        }
+        # Add the 50% to the challenger and remove it from event_root
+
+        scope:challenger = {
+            if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } add_short_term_gold = scope:event_root.var:duel_transfer_gold }
+        }
+        scope:event_root = {
+            if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold }
+            remove_variable = duel_transfer_gold
+        }
+        # Trigger escape follow-up: call banners event for root
+        # Trigger the follow-up event for the deposed root to display the escape UI
+        root = { trigger_event = { id = palace_coup.1003 } }
+
+        scope:challenger = {
+            if = {
+                limit = {
+                    root = { has_legitimacy = yes }
+                    this = { has_legitimacy = yes }
+                    this = { is_ruler = yes }
+                }
+                add_legitimacy = -1200
+            }
+        }
+
+        # Make root and the challenger rivals of each other
+        root = {
+            if = {
+                limit = { can_set_relation_rival_trigger = { CHARACTER = scope:challenger } }
+                set_relation_rival = {
+                    target = scope:challenger
+                    reason = riseandfall_adventurer_became_rival
+                }
+            }
+        }
+
+        # Notify challenger of successful escape
+        scope:challenger = { trigger_event = { id = palace_coup.2003 } }
+
+        scope:challenger = {
+            if = {
+                limit = { can_set_relation_rival_trigger = { CHARACTER = root } }
+                set_relation_rival = {
+                    target = root
+                    reason = riseandfall_adventurer_became_rival
+                }
+            }
+        }
+
+        scope:event_root = {
+            every_courtier_or_guest = {
+                limit = {
+                    this != root
+                    this != scope:challenger
+                }
+
+                # Assign employer to challenger when possible (challenger is now a ruler after the split)
+                if = {
+                    limit = { employer != scope:challenger }
+                    if = { limit = { exists = scope:challenger scope:challenger = { is_alive = yes is_ruler = yes } } set_employer = scope:challenger }
+                }
+                random = {
+                    chance = 50
+
+                    if = {
+                        limit = {
+                            not = { exists = involved_activity }
+                        }
+
+                        set_location_to_default = yes
+                    }
+                    else = {
+                        return_to_court = yes
+                    }
+                }
+            }
+        }
+}
+
+##########################
+# Rise and Fall - Palace Coup Root Flees Failure
+# When root fails to flee, challenger becomes puppet master (no title transfers, no imprisonment)
+
+riseandfall_palace_coup_root_flees_failure = {
+    # Transfer root's gold (spoil of victory)
+    scope:event_root = { if = { limit = { gold > 1 } set_variable = { name = duel_transfer_gold value = gold } } }
+    scope:challenger = { if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } add_short_term_gold = scope:event_root.var:duel_transfer_gold } }
+    scope:event_root = { if = { limit = { scope:event_root = { has_variable = duel_transfer_gold } } remove_short_term_gold = scope:event_root.var:duel_transfer_gold } remove_variable = duel_transfer_gold }
+
+    # Do NOT transfer titles or vassals — instead establish puppet regency on the root
+    if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            NOT = { root = { has_active_diarchy = yes } }
+        }
+        root = {
+            scope:challenger = {
+                if = { limit = { NOT = { employer = root } } set_employer = root }
+                every_courtier = {
+                    limit = { is_alive = yes NOT = { employer = root } }
+                    set_employer = root
+                }
+            }
+            try_start_diarchy = puppet_regency
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+    else_if = {
+        limit = {
+            exists = scope:challenger
+            scope:challenger = { is_alive = yes NOT = { is_ruler = yes } }
+            root = { has_active_diarchy = yes }
+        }
+        root = {
+            # Ensure challenger and their courtiers are employed by the defeated ruler (root)
+            scope:challenger = {
+                # Only set employer if challenger is not a ruler
+                if = { limit = { NOT = { employer = root } } set_employer = root }
+                every_courtier = {
+                    limit = { is_alive = yes NOT = { employer = root } }
+                    set_employer = root
+                }
+            }
+
+            set_diarch = scope:challenger
+            set_diarchy_type = puppet_regency
+            set_diarchy_swing = 90
+
+            riseandfall_sync_puppet_master_court_position = yes
+        }
+    }
+
+    # Notify root of their new status (failed escape specific notification)
+    root = { trigger_event = { id = palace_coup.1005 } }
+
+    # Notify challenger of failed escape
+    scope:challenger = { trigger_event = { id = palace_coup.2004 } }
+}
+
+##########################
+# Rise and Fall - Palace Coup Root Death
+# Kills the root character
+
+riseandfall_palace_coup_root_death = {
+    root = {
+        death = {
+            death_reason = death_duel
+            killer = scope:challenger
+        }
+    }
+}
+
+# Rise and Fall - Calculate Total Side Prowess
+# Calculates the total prowess of the character and their knights
+# Stores the result in variable riseandfall_total_prowess
+riseandfall_calculate_total_side_prowess = {
+    # Start with the character's own prowess
+    save_scope_as = riseandfall_prowess_target
+    set_variable = { name = riseandfall_total_prowess value = prowess }
+
+    # For challenger, use all courtiers (since knights might not be assigned yet)
+    if = {
+        limit = { exists = scope:challenger this = scope:challenger }
+        every_courtier = {
+            limit = { is_alive = yes is_imprisoned = no }
+            save_scope_as = riseandfall_prowess_courtier
+            scope:riseandfall_prowess_target = {
+                change_variable = { name = riseandfall_total_prowess add = scope:riseandfall_prowess_courtier.prowess }
+            }
+        }
+    }
+    # For others (root), use knights
+    else = {
+        every_knight = {
+            limit = { is_alive = yes is_imprisoned = no }
+            save_scope_as = riseandfall_prowess_courtier
+            scope:riseandfall_prowess_target = {
+                change_variable = { name = riseandfall_total_prowess add = scope:riseandfall_prowess_courtier.prowess }
+            }
+        }
+    }
+
+}
+
+# Apply random outcomes (death/wounded/maimed) to root knights and challenger courtiers
+##########################
+riseandfall_palace_coup_casualties = {
+    # Root side: every knight has a chance to live, die, be wounded, or be maimed
+    root = {
+        every_knight = {
+            limit = { is_alive = yes is_imprisoned = no }
+            random_list = {
+                50 = { }
+                20 = { death = { death_reason = death_in_palace_coup } }
+                10 = { add_trait = wounded_1 }
+                10 = { add_trait = maimed }
+            }
+        }
+    }
+
+    # Challenger side: every courtier has a chance to live, die, be wounded, or be maimed
+    scope:challenger = {
+        every_courtier = {
+            limit = { is_alive = yes is_imprisoned = no is_adult = yes }
+            random_list = {
+                50 = { }
+                20 = { death = { death_reason = death_in_palace_coup } }
+                10 = { add_trait = wounded_1 }
+                10 = { add_trait = maimed }
+            }
+        }
+    }
+}

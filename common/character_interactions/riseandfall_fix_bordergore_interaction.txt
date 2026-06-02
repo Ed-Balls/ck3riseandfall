@@ -1,0 +1,155 @@
+﻿riseandfall_fix_bordergore_interaction = {
+    category = interaction_riseandfall
+    auto_accept = yes
+    icon = icon_riseandfall
+    desc = riseandfall_fix_bordergore_interaction_desc
+
+    # Only top lieges (king or above) can use this on their vassals
+    is_shown = {
+        # Show to AI actors always, and to human players only when Lite Mode is disabled
+        OR = {
+            scope:actor = { is_ai = yes }
+            AND = {
+                scope:actor = { is_ai = no }
+                has_game_rule = riseandfall_lite_mode_disabled
+            }
+        }
+
+        scope:actor = {
+            highest_held_title_tier >= tier_kingdom
+            is_liege_or_above_of = scope:recipient
+            government_has_flag = government_is_administrative
+            is_independent_ruler = yes
+        }
+
+        scope:recipient = {
+            government_has_flag = government_is_administrative
+            is_ai = yes
+            liege = scope:actor
+            NOT = { is_at_war_with = scope:actor }
+        }
+    }
+
+    is_valid = {
+        scope:actor = {
+            highest_held_title_tier >= tier_kingdom
+            is_liege_or_above_of = scope:recipient
+            government_has_flag = government_is_administrative
+        }
+        scope:recipient = {
+            is_landed = yes
+            government_has_flag = government_is_administrative
+            NOT = { has_trait = warlord }  # Cannot use on warlords
+            NOT = { is_at_war_with = scope:actor }
+            liege = scope:actor
+            NOT = { highest_held_title_tier = tier_county }  # Counts are not eligible for bordergore fix
+            OR = {
+                # Directly held counties by recipient that would be transferred
+                custom_tooltip = {
+                    text = riseandfall_fix_bordergore.recipient_direct_counties.tooltip
+                    subject = scope:recipient
+                    any_held_title = {
+                        tier = tier_county
+                        exists = de_jure_liege
+                        holder = scope:recipient
+                        NOT = { holder = scope:recipient.liege }
+                        NOT = { holder = { is_ai = no } }
+                        NOT = { scope:recipient = { highest_held_title_tier = tier_county } }  # Do not transfer direct counties from counts
+                        # Transfer only counties outside every de jure title chain held by the recipient.
+                        NOT = { de_jure_liege = { holder = scope:recipient } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } } } }
+                    }
+                }
+                # Subrealm counties (held by the recipient's vassals) that would be transferred
+                custom_tooltip = {
+                    text = riseandfall_fix_bordergore.vassal_direct_counties.tooltip
+                    subject = scope:recipient
+                    any_sub_realm_county = {
+                        exists = this
+                        exists = de_jure_liege
+                        NOT = { holder = scope:recipient.liege }
+                        NOT = { holder = { is_ai = no } }
+                        NOT = { holder = scope:recipient }
+                        NOT = { this = scope:recipient.liege.capital_province.county }
+                        NOT = { this = scope:recipient.capital_province.county }
+                        NOT = { de_jure_liege = { holder = scope:recipient } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } } }
+                        NOT = { de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { exists = de_jure_liege de_jure_liege = { holder = scope:recipient } } } } }
+                        NOT = { AND = { has_variable = Riseandfall_giveaway_blocked scope:recipient.liege = { is_ai = no } } }
+                    }
+                }
+            }
+        }
+    }
+
+    on_accept = {
+        # Call the scripted effect in the interaction context so both scope:actor and scope:recipient are available
+        riseandfall_fix_bordergore_se = yes
+    }
+
+    ai_frequency = 1
+
+    # Allow the AI to consider this interaction when populating potential actions
+    ai_potential = { always = yes }
+
+    ai_targets = {
+        # Which characters does the ai consider as recipient for the interaction
+        # Use a built-in target list; 'vassals' will make the AI consider vassals of the actor
+        ai_recipients = vassals
+        max = 100
+    }
+
+    ai_will_do = {
+        # Lower base so chosen modifiers make a meaningful difference; this is a targeted administrative operation
+        base = 60
+
+        # Actor-scope modifiers — who the liege is
+        modifier = {
+            scope:actor = { has_trait = just }
+            add = 40
+        }
+        modifier = {
+            scope:actor = { has_trait = honest }
+            add = 25
+        }
+        modifier = {
+            scope:actor = { has_trait = arbitrary }
+            add = -25
+        }
+        modifier = {
+            scope:actor = { has_trait = greedy }
+            add = 10
+        }
+
+        # Recipient-scope modifiers — we want to weaken problematic vassals
+        modifier = {
+            scope:recipient = { has_trait = ambitious }
+            add = 60
+        }
+        modifier = {
+            scope:recipient = { has_trait = greedy }
+            add = 40
+        }
+        modifier = {
+            scope:recipient = { highest_held_title_tier >= tier_duchy }
+            add = 40
+        }
+        modifier = {
+            scope:recipient = { opinion = { target = scope:actor value < 0 } }
+            add = 45
+        }
+        modifier = {
+            scope:recipient = { opinion = { target = scope:actor value >= 60 } }
+            add = -40
+        }
+
+        # Contextual factors
+        modifier = {
+            scope:actor = { is_at_war = yes }
+            add = -50
+        }
+    }
+}
