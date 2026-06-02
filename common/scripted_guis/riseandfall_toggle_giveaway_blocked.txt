@@ -1,7 +1,0 @@
-﻿riseandfall_toggle_giveaway_blocked_gui = {
-	scope = title
-
-	effect = {
-		riseandfall_toggle_giveaway_blocked = yes
-	}
-}
