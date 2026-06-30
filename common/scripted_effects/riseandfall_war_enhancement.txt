@@ -656,7 +656,7 @@ war_enhancement_regent_displaced = {
 }
 
 war_enhancement_enthroned_heir = { #rebel merely overthrew liege and nothing else. 
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -667,7 +667,7 @@ war_enhancement_enthroned_heir = { #rebel merely overthrew liege and nothing els
 }
 
 war_enhancement_council_formation = { #rebel is forming a council to elect a new liege. 
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -678,7 +678,7 @@ war_enhancement_council_formation = { #rebel is forming a council to elect a new
 }
 
 war_enhancement_princely_restoration = { #rebel has restored princely elective to the hre. 
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -689,7 +689,7 @@ war_enhancement_princely_restoration = { #rebel has restored princely elective t
 }
 
 war_enhancement_independence_affirmed = { #rebel has declared independence. 
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -700,7 +700,7 @@ war_enhancement_independence_affirmed = { #rebel has declared independence.
 }
 
 war_enhancement_hereditary_succession_enforced = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -711,7 +711,7 @@ war_enhancement_hereditary_succession_enforced = {
 }
 
 war_enhancement_delay_council = { #Regent has delayed the council meeting to vote.
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -722,7 +722,7 @@ war_enhancement_delay_council = { #Regent has delayed the council meeting to vot
 }
 
 war_enhancement_council_overthrow = { #Regent has used their influence to overthrow the realm
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -733,7 +733,7 @@ war_enhancement_council_overthrow = { #Regent has used their influence to overth
 }
 
 war_enhancement_smooth_election = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -777,7 +777,7 @@ war_enhancement_clan_seize = {
 }
 
 war_enhancement_clan_overthrow = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -788,7 +788,7 @@ war_enhancement_clan_overthrow = {
 }
 
 war_enhancement_primitive_overthrow = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -799,7 +799,7 @@ war_enhancement_primitive_overthrow = {
 }
 
 war_enhancement_liege_slain = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -810,7 +810,7 @@ war_enhancement_liege_slain = {
 }
 
 war_enhancement_liege_family_slain = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
@@ -821,7 +821,7 @@ war_enhancement_liege_family_slain = {
 }
 
 war_enhancement_administrative_liege_usurper = {
-	scope:riseandfall_war_enhancement_attacker.liege = {
+	scope:riseandfall_war_enhancement_liege_primary_title.holder = {
 		every_vassal = {
 			limit = { NOT = { this = scope:riseandfall_war_enhancement_attacker } }
 			trigger_event = {
