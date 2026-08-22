@@ -151,7 +151,7 @@ riseandfall_war_enhancement_war_won = {
 						OR = {
 							using_cb = liberty_faction_war
 							using_cb = refused_liege_demand_war
-							using_cb = claimant_faction_war
+							#using_cb = claimant_faction_war
 						}
 					}
 					scope:riseandfall_war_enhancement_attacker.primary_title = {
@@ -168,7 +168,7 @@ riseandfall_war_enhancement_war_won = {
 						OR = {
 							using_cb = liberty_faction_war
 							using_cb = refused_liege_demand_war
-							using_cb = claimant_faction_war
+							#using_cb = claimant_faction_war
 						}
 					}
 					scope:riseandfall_war_enhancement_attacker.primary_title = {
@@ -187,7 +187,7 @@ riseandfall_war_enhancement_war_won = {
 						OR = {
 							using_cb = liberty_faction_war
 							using_cb = refused_liege_demand_war
-							using_cb = claimant_faction_war
+							#using_cb = claimant_faction_war
 						}
 					}
 					scope:riseandfall_war_enhancement_attacker.primary_title = {
@@ -207,7 +207,7 @@ riseandfall_war_enhancement_war_won = {
 						OR = {
 							using_cb = liberty_faction_war
 							using_cb = refused_liege_demand_war
-							using_cb = claimant_faction_war
+							#using_cb = claimant_faction_war
 						}
 					}
 				}
@@ -311,7 +311,7 @@ riseandfall_war_enhancement_war_won = {
 					scope:war = {
 						OR = {
 							using_cb = refused_liege_demand_war
-							using_cb = liberty_war
+							using_cb = liberty_faction_war
 						}
 					}
 					scope:riseandfall_war_enhancement_attacker = {
@@ -332,7 +332,7 @@ riseandfall_war_enhancement_war_won = {
 					scope:war = {
 						OR = {
 							using_cb = refused_liege_demand_war
-							using_cb = liberty_war
+							using_cb = liberty_faction_war
 						}
 					}
 					scope:riseandfall_war_enhancement_attacker = {
